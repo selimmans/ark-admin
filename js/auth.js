@@ -8,16 +8,27 @@ document.documentElement.style.visibility = 'hidden'
     return
   }
 
-  const { data: profile } = await window._db
+  const { data: profile, error: profileErr } = await window._db
     .from('profiles')
     .select('role, name')
     .eq('id', session.user.id)
     .single()
 
+  if (profileErr || !profile) {
+    console.error('Profile load failed:', profileErr?.message)
+    document.documentElement.style.visibility = ''
+    document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;color:#8A4A4A">
+      Profile load failed — RLS policy issue.<br><br>
+      <small>${profileErr?.message || 'No profile row found'}</small><br><br>
+      <a href="./auth.html">Back to login</a>
+    </div>`
+    return
+  }
+
   window._session  = session
   window._user     = session.user
-  window._role     = profile?.role || 'staff'
-  window._userName = profile?.name || session.user.email
+  window._role     = profile.role
+  window._userName = profile.name || session.user.email
 
   // Load all data now that session is confirmed — RLS will pass
   if (window.DB) await window.DB.load()
