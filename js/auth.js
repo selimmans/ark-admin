@@ -31,6 +31,7 @@ document.documentElement.style.visibility = 'hidden'
       body.staff-mode #deleteBtn                { display: none !important; }
       body.staff-mode #revenue-section          { display: none !important; }
       body.staff-mode #net-section              { display: none !important; }
+      body.staff-mode #settingsBtn              { display: none !important; }
     `
     document.head.appendChild(style)
   }
