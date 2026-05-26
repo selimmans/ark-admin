@@ -210,7 +210,7 @@
   </div>
   <div class="nav-actions">
     <button class="btn-nav" onclick="openSettings()">Settings</button>
-    <button class="btn-nav primary" onclick="openBookingModal()">+ Booking</button>
+    <button class="btn-nav primary" id="addBookingBtn" onclick="openBookingModal()">+ Booking</button>
   </div>
 </nav>
 
@@ -768,6 +768,18 @@ document.addEventListener('keydown',e=>{
 initUnits();
 renderSnapshot();
 renderCalendar();
+
+window.onRoleReady = function(role) {
+  if (role !== 'staff') return
+  // Disable calendar cell clicks and booking block clicks for staff
+  const origOpenBooking = window.openBookingModal
+  window.openBookingModal = function(booking, preUnit, preDate) {
+    if (!booking) return // block new booking creation
+    origOpenBooking(booking, preUnit, preDate)
+  }
+  const origOpenDay = window.openDayModal
+  window.openDayModal = function() {} // staff doesn't need the day detail modal
+}
 </script>
 </body>
 </html>
