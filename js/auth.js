@@ -16,9 +16,10 @@ document.documentElement.style.visibility = 'hidden'
 
   if (profileErr || !profile) {
     console.error('Profile load failed:', profileErr?.message)
+    await window._db.auth.signOut()
     document.documentElement.style.visibility = ''
     document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;color:#8A4A4A">
-      Profile load failed — RLS policy issue.<br><br>
+      Profile load failed — permission denied.<br><br>
       <small>${profileErr?.message || 'No profile row found'}</small><br><br>
       <a href="./auth.html">Back to login</a>
     </div>`
