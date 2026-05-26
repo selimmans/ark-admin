@@ -205,7 +205,7 @@
       const { error } = await window._db.auth.signInWithPassword({ email, password })
 
       if (error) {
-        errEl.textContent = 'Wrong password.'
+        errEl.textContent = error.message
         btn.disabled = false
         btn.textContent = 'Sign In'
         return
