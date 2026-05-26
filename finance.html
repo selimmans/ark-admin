@@ -285,6 +285,7 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); }
   </style>
+  <link rel="stylesheet" href="./css/shared.css" />
 </head>
 <body>
 
@@ -697,7 +698,10 @@ document.getElementById('costOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeCostModal();
 });
 
-window.onRoleReady = function(role) { initMonthFilter(); render(); }
+window.onRoleReady = function(role) {
+  initMonthFilter(); render();
+  window.onDataChange = function() { render(); }
+}
 </script>
 </body>
 </html>

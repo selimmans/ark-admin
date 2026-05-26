@@ -55,6 +55,7 @@ document.documentElement.style.visibility = 'hidden'
   if (navActions) {
     const btn = document.createElement('button')
     btn.setAttribute('onclick', 'signOut()')
+    btn.className = 'btn-signout'
     btn.style.cssText = [
       'font-family:var(--sans)', 'font-size:8px', 'font-weight:400',
       'letter-spacing:2px', 'text-transform:uppercase', 'padding:7px 14px',

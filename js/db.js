@@ -110,6 +110,7 @@ window.DB = {
     this._cleaning = (c.data || []).map(rowToCleaning)
     this._extras   = (x.data || []).map(rowToExtra)
     this._units    = (u.data || []).map(rowToUnit)
+    this.setupRealtime()
   },
 
   // ── Sync reads (from memory) ──
@@ -207,5 +208,40 @@ window.DB = {
     const idx = this._units.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._units[idx] = saved; else this._units.push(saved)
     return saved
+  },
+
+  setupRealtime() {
+    const self = this
+    const make = (mapper, arr) => ({
+      INSERT: ({ new: r }) => { const item = mapper(r); if (!self[arr].find(x => x.id === item.id)) self[arr].unshift(item); window.onDataChange?.() },
+      UPDATE: ({ new: r }) => { const item = mapper(r); const i = self[arr].findIndex(x => x.id === item.id); if (i >= 0) self[arr][i] = item; else self[arr].unshift(item); window.onDataChange?.() },
+      DELETE: ({ old: r }) => { self[arr] = self[arr].filter(x => x.id !== r.id); window.onDataChange?.() },
+    })
+    const b = make(rowToBooking,  '_bookings')
+    const e = make(rowToExpense,  '_expenses')
+    const t = make(rowToTask,     '_tasks')
+    const c = make(rowToCleaning, '_cleaning')
+    const x = make(rowToExtra,    '_extras')
+    const u = make(rowToUnit,     '_units')
+    window._db.channel('ark-realtime')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'bookings'},      b.INSERT)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'bookings'},      b.UPDATE)
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'bookings'},      b.DELETE)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'expenses'},      e.INSERT)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'expenses'},      e.UPDATE)
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'expenses'},      e.DELETE)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tasks'},         t.INSERT)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},         t.UPDATE)
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'tasks'},         t.DELETE)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'cleaning_tasks'},c.INSERT)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'cleaning_tasks'},c.UPDATE)
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'cleaning_tasks'},c.DELETE)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'extras'},        x.INSERT)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'extras'},        x.UPDATE)
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'extras'},        x.DELETE)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'units'},         u.INSERT)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'units'},         u.UPDATE)
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'units'},         u.DELETE)
+      .subscribe()
   },
 }

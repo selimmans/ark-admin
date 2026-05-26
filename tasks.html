@@ -136,6 +136,7 @@
 
     ::-webkit-scrollbar{width:4px;height:4px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border);}
   </style>
+  <link rel="stylesheet" href="./css/shared.css" />
 </head>
 <body>
 
@@ -185,8 +186,9 @@
     <button class="filter-chip"        id="chip-Done"        onclick="setStatusFilter('Done')"       >Done</button>
   </div>
 
-  <!-- TABLE -->
+  <!-- TABLE (desktop) / CARDS (mobile via CSS) -->
   <div class="table-wrap" id="tableWrap"></div>
+  <div class="task-cards" id="cardsWrap"></div>
 
 </div>
 
@@ -289,7 +291,7 @@ function initPage(){
 }
 
 /* ══════════ RENDER ══════════ */
-function render(){ renderSummary(); renderTable(); }
+function render(){ renderSummary(); renderTable(); renderCards(); }
 
 function renderSummary(){
   const tasks = DB.getTasks();
@@ -355,14 +357,46 @@ function renderTable(){
   </table>`;
 }
 
+function renderCards(){
+  const catF  = document.getElementById('filterCat').value;
+  const unitF = document.getElementById('filterUnit').value;
+  let tasks = DB.getTasks();
+  if(catF)  tasks = tasks.filter(t=>t.category===catF);
+  if(unitF) tasks = tasks.filter(t=>t.unitId===unitF);
+  if(statusFilter!=='all') tasks = tasks.filter(t=>t.status===statusFilter);
+  const urgencyOrder={Urgent:0,Complaint:1,Maintenance:2,Supply:3,Other:4};
+  tasks.sort((a,b)=>{
+    if((a.status==='Done')!==(b.status==='Done')) return a.status==='Done'?1:-1;
+    const ua=urgencyOrder[a.category]??9,ub=urgencyOrder[b.category]??9;
+    if(ua!==ub) return ua-ub;
+    return (b.date||'')>(a.date||'')?1:-1;
+  });
+  const wrap=document.getElementById('cardsWrap');
+  if(!tasks.length){wrap.innerHTML='<div class="empty-state"><div class="empty-state-title">No tasks found</div></div>';return;}
+  const statusCycleMap={Open:'In Progress','In Progress':'Done',Done:'Open'};
+  wrap.innerHTML=tasks.map(t=>{
+    const u=t.unitId?getUnitById(t.unitId):null;
+    const cat=t.category||'Other';
+    return `<div class="task-card" onclick="openEditModal('${t.id}')">
+      <div class="tc-top">
+        <div class="tc-title">${t.title||'—'}</div>
+        <span class="status-pill ${t.status}" onclick="event.stopPropagation();cycleStatus('${t.id}','${statusCycleMap[t.status||'Open']}')">${t.status||'Open'}</span>
+      </div>
+      <div class="tc-meta">
+        <span class="cat-badge ${cat}">${cat}</span>
+        ${u?`<div style="display:flex;align-items:center;gap:5px"><div class="tc-dot" style="background:${u.color}"></div>${u.name}</div>`:'<span style="color:var(--ink-muted);font-size:11px">General</span>'}
+        ${t.date?`<span style="font-family:var(--display);font-size:11px;letter-spacing:1px">${fmtDateShort(t.date)}</span>`:''}
+      </div>
+      ${t.notes?`<div style="font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink-muted);margin-top:6px">${t.notes.slice(0,100)}${t.notes.length>100?'…':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
 /* ══════════ STATUS CYCLE ══════════ */
 function cycleStatus(id, next){
-  const tasks = DB.getTasks();
-  const t = tasks.find(t=>t.id===id);
+  const t = DB.getTasks().find(t=>t.id===id);
   if(!t) return;
-  t.status = next;
-  DB.saveTasks(tasks);
-  render();
+  DB.saveTask({...t, status: next}).then(()=>render());
 }
 
 /* ══════════ MODAL ══════════ */
@@ -434,7 +468,10 @@ async function deleteTask(){
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 document.getElementById('modalOverlay').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
-window.onRoleReady = function(role) { initPage(); }
+window.onRoleReady = function(role) {
+  initPage();
+  window.onDataChange = function() { render(); }
+}
 </script>
 </body>
 </html>

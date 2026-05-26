@@ -195,8 +195,16 @@
     .btn.primary{background:var(--ink);color:var(--cream);border-color:var(--ink);} .btn.primary:hover{background:var(--ink-soft);}
     .btn.danger{color:var(--negative);border-color:rgba(138,74,74,0.4);} .btn.danger:hover{background:rgba(138,74,74,0.08);border-color:var(--negative);}
 
+    /* VIEW TOGGLE */
+    .view-toggle{display:flex;border:0.5px solid var(--border);overflow:hidden;flex-shrink:0;}
+    .view-btn{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:6px 13px;background:transparent;border:none;border-right:0.5px solid var(--border);color:var(--ink-muted);cursor:pointer;transition:all 160ms ease;}
+    .view-btn:last-child{border-right:none;}
+    .view-btn.active{background:var(--ink);color:var(--cream);}
+    .view-btn:not(.active):hover{background:var(--sand);color:var(--ink);}
+
     ::-webkit-scrollbar{width:4px;height:4px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--border);}
   </style>
+  <link rel="stylesheet" href="./css/shared.css" />
 </head>
 <body>
 
@@ -224,10 +232,19 @@
   <div class="week-label" id="weekLabel"></div>
   <button class="week-today-btn" onclick="goToToday()">Today</button>
   <button class="week-nav-btn" onclick="navigateWeek(1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+  <div class="view-toggle">
+    <button class="view-btn active" id="btn-cal"  onclick="setView('grid')">Grid</button>
+    <button class="view-btn"        id="btn-list" onclick="setView('list')">List</button>
+  </div>
 </div>
 
 <!-- CALENDAR -->
-<div class="cal-wrap"><div class="cal-grid" id="calGrid"></div></div>
+<div id="calView">
+  <div class="cal-wrap"><div class="cal-grid" id="calGrid"></div></div>
+</div>
+<div id="listView" style="display:none">
+  <div class="cal-list-wrap" id="bookingListWrap"></div>
+</div>
 
 <!-- BOOKING MODAL -->
 <div class="modal-overlay" id="bookingOverlay">
@@ -412,6 +429,51 @@ function renderSnapshot() {
 
 /* ══════════ CALENDAR ══════════ */
 let currentWeekStart=getWeekStart(new Date());
+let currentCalView='grid';
+
+function setView(v){
+  currentCalView=v;
+  document.getElementById('calView').style.display   = v==='grid'?'':'none';
+  document.getElementById('listView').style.display  = v==='list'?'':'none';
+  document.getElementById('btn-cal').classList.toggle('active',  v==='grid');
+  document.getElementById('btn-list').classList.toggle('active', v==='list');
+  if(v==='list') renderListView();
+}
+
+function renderListView(){
+  const units=DB.getUnits();
+  const bookings=DB.getBookings()
+    .slice().sort((a,b)=>a.checkIn<b.checkIn?-1:1);
+  const wrap=document.getElementById('bookingListWrap');
+  if(!bookings.length){wrap.innerHTML='<div class="bcard-empty">No bookings yet</div>';return;}
+  let html='',lastLabel='';
+  bookings.forEach(b=>{
+    const ci=new Date(b.checkIn);
+    const label=MONTH_NAMES[ci.getMonth()]+' '+ci.getFullYear();
+    if(label!==lastLabel){html+=`<div class="bcard-date-group">${label}</div>`;lastLabel=label;}
+    const unitNames=(b.accommodations||[]).map(id=>(units.find(u=>u.id===id)||{name:id}).name).join(', ')||'—';
+    const barColor=(()=>{const u=units.find(x=>x.id===(b.accommodations||[])[0]);return u?.color||'#B09070';})();
+    const ciStr=fmtDate(ci), coStr=fmtDate(new Date(b.checkOut));
+    html+=`<div class="bcard" onclick="openBookingFromList('${b.id}')">
+      <div class="bcard-bar" style="background:${barColor}"></div>
+      <div class="bcard-body">
+        <div class="bcard-guest">${b.guestName||'—'}</div>
+        <div class="bcard-meta">${unitNames} &nbsp;·&nbsp; ${ciStr} → ${coStr}</div>
+      </div>
+      <div class="bcard-badges">
+        <span class="bcard-badge ${b.status||'pending'}">${b.status||'Pending'}</span>
+        <span class="bcard-badge ${b.paymentStatus||'unpaid'}">${b.paymentStatus||'Unpaid'}</span>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML=html;
+}
+
+function openBookingFromList(id){
+  const b=DB.getBookings().find(x=>x.id===id);
+  if(b) openBookingModal(b);
+}
+
 function navigateWeek(d){ currentWeekStart=addDays(currentWeekStart,d*7); renderCalendar(); }
 function goToToday(){ currentWeekStart=getWeekStart(new Date()); renderCalendar(); }
 
@@ -739,6 +801,7 @@ document.addEventListener('keydown',e=>{
 
 window.onRoleReady = function(role) {
   renderSnapshot(); renderCalendar();
+  window.onDataChange = function() { renderSnapshot(); if(currentCalView==='grid') renderCalendar(); else renderListView(); }
   if (role !== 'staff') return
   const origOpenBooking = window.openBookingModal
   window.openBookingModal = function(booking, preUnit, preDate) {

@@ -1,0 +1,173 @@
+/* ═══════════════════════════════════════════ RESPONSIVE SHARED STYLES */
+
+/* ─── NAV: 2-row layout on tablet/phone ─── */
+@media (max-width: 768px) {
+  .nav {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 0;
+    gap: 0;
+  }
+  .nav-brand { padding: 13px 16px; flex: 1; }
+  .nav-actions { padding: 7px 12px; gap: 4px; }
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    border-top: 0.5px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab { padding: 10px 14px; white-space: nowrap; }
+}
+
+@media (max-width: 480px) {
+  .nav-brand span { display: none; }
+  .btn-nav { padding: 6px 10px; letter-spacing: 1.5px; font-size: 7px; }
+  /* sign-out button injected by auth.js — show only "Sign Out" by shrinking */
+  .btn-signout {
+    max-width: 72px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    direction: rtl !important; /* keeps "Sign Out" visible, truncates the name */
+    font-size: 7px !important;
+    padding: 6px 8px !important;
+    letter-spacing: 1px !important;
+  }
+}
+
+/* ─── MODALS: bottom sheet on phone ─── */
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  .modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    max-height: 92dvh;
+    overflow-y: auto;
+  }
+  /* stacked form columns */
+  .form-grid { grid-template-columns: 1fr !important; }
+  .rates-grid { grid-template-columns: 1fr 1fr !important; }
+  .modal-body { padding: 16px !important; }
+  .modal-header { padding: 14px 16px 12px !important; }
+  .modal-footer { padding: 12px 16px !important; }
+}
+
+/* ─── PAGE LAYOUT ─── */
+@media (max-width: 640px) {
+  .page { padding: 20px 14px 80px !important; }
+  .week-bar { padding: 10px 14px; gap: 8px; }
+  .week-label { font-size: 9px; letter-spacing: 1.5px; }
+  .week-today-btn { padding: 5px 9px; }
+  .view-toggle { flex-shrink: 0; }
+}
+
+/* ─── SNAPSHOT BAR ─── */
+@media (max-width: 640px) {
+  .snap-item { padding: 10px 14px; min-width: 72px; }
+  .snap-label { font-size: 6px; letter-spacing: 1.5px; }
+  .snap-val { font-size: 17px; }
+  .snap-date { padding: 10px 12px; font-size: 7px; }
+}
+
+/* ─── CALENDAR GRID: tighter columns on phone ─── */
+@media (max-width: 640px) {
+  .cal-grid {
+    min-width: 520px !important;
+    grid-template-columns: 72px repeat(7, 1fr) !important;
+  }
+  .cal-unit-label { padding: 0 7px; min-height: 60px; }
+  .cal-unit-name { font-size: 7px; letter-spacing: 1.5px; }
+  .cal-days-row { min-height: 60px; }
+  .cal-cell { min-height: 60px; }
+  .block-guest { font-size: 9px; }
+  .block-status { display: none; }
+}
+
+/* ─── SUMMARY STRIP (tasks) ─── */
+@media (max-width: 640px) {
+  .summary-strip { overflow-x: auto; }
+  .strip-item { padding: 12px 14px; min-width: 80px; flex-shrink: 0; }
+  .strip-val { font-size: 18px; }
+}
+
+/* ─── BOOKING CARDS (calendar list view) ─── */
+.bcard {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 0.5px solid var(--border);
+  background: rgba(255,255,255,0.45);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.bcard:first-child { border-top: 0.5px solid var(--border); }
+.bcard:hover { background: var(--sand); }
+.bcard-bar { width: 3px; align-self: stretch; border-radius: 1px; flex-shrink: 0; min-height: 38px; }
+.bcard-body { flex: 1; min-width: 0; }
+.bcard-guest {
+  font-family: var(--sans); font-size: 13px; font-weight: 400; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bcard-meta { font-family: var(--sans); font-size: 11px; font-weight: 300; color: var(--ink-muted); margin-top: 3px; }
+.bcard-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.bcard-badge {
+  font-family: var(--sans); font-size: 7px; font-weight: 400;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 3px 8px; border: 0.5px solid; white-space: nowrap;
+}
+.bcard-badge.confirmed { color: #4A7A4A; border-color: rgba(74,122,74,0.4); background: rgba(74,122,74,0.08); }
+.bcard-badge.pending   { color: var(--earth-dim); border-color: rgba(176,144,112,0.4); background: rgba(176,144,112,0.08); }
+.bcard-badge.cancelled { color: var(--negative); border-color: rgba(138,74,74,0.4); background: rgba(138,74,74,0.08); }
+.bcard-badge.blocked   { color: var(--ink-muted); border-color: var(--border); background: transparent; }
+.bcard-badge.paid      { color: #4A7A4A; border-color: rgba(74,122,74,0.4); background: rgba(74,122,74,0.08); }
+.bcard-badge.unpaid    { color: var(--negative); border-color: rgba(138,74,74,0.4); background: rgba(138,74,74,0.08); }
+.bcard-date-group {
+  padding: 8px 16px 4px;
+  font-family: var(--display); font-size: 8px; font-weight: 400;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--ink-muted);
+  border-bottom: 0.5px solid var(--border);
+  background: rgba(245,242,236,0.7);
+}
+.bcard-empty {
+  padding: 48px 24px; text-align: center;
+  font-family: var(--display); font-size: 12px; letter-spacing: 2px;
+  color: var(--ink-muted);
+}
+.cal-list-wrap { max-width: 960px; margin: 0 auto; }
+
+/* ─── TASKS CARD VIEW (mobile) ─── */
+.task-cards { display: none; }
+@media (max-width: 640px) {
+  .table-wrap { display: none; }
+  .task-cards { display: flex; flex-direction: column; gap: 0; border: 0.5px solid var(--border); }
+}
+.task-card {
+  padding: 14px 16px; border-bottom: 0.5px solid var(--border);
+  background: rgba(255,255,255,0.45); cursor: pointer; transition: background 140ms;
+}
+.task-card:last-child { border-bottom: none; }
+.task-card:hover { background: var(--sand); }
+.tc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.tc-title { font-family: var(--sans); font-size: 13px; font-weight: 400; color: var(--ink); flex: 1; min-width: 0; }
+.tc-meta { font-family: var(--sans); font-size: 11px; font-weight: 300; color: var(--ink-muted); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── FINANCE TABLE (mobile) ─── */
+@media (max-width: 640px) {
+  .expense-table-wrap { overflow-x: auto; }
+  .expense-table-wrap table { min-width: 480px; }
+  .section-header { margin-top: 28px !important; }
+  .summary-cards { grid-template-columns: 1fr 1fr !important; }
+}
