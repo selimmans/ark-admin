@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./js/supabase.js"></script>
+  <script src="./js/db.js"></script>
   <script src="./js/auth.js"></script>
   <style>
     :root {
@@ -251,12 +252,7 @@
 </div>
 
 <script>
-/* ══════════ DB ══════════ */
-const DB = {
-  getTasks(){ try{return JSON.parse(localStorage.getItem('ark_tasks'))||[];}catch{return[];} },
-  saveTasks(list){ localStorage.setItem('ark_tasks',JSON.stringify(list)); },
-  getUnits(){ try{return JSON.parse(localStorage.getItem('ark_units'))||[];}catch{return[];} }
-};
+/* DB comes from js/db.js */
 
 /* ══════════ HELPERS ══════════ */
 function uuid(){ return 'xxxxxxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16)); }
@@ -413,31 +409,24 @@ function openEditModal(id){
 
 function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); editingId=null; }
 
-function saveTask(){
+async function saveTask(){
   const title=document.getElementById('f-title').value.trim();
   if(!title){ alert('Title is required.'); return; }
-  const tasks=DB.getTasks();
   const data={
     title, category:document.getElementById('f-cat').value,
     unitId:document.getElementById('f-unit').value||null,
-    assignedTo:document.getElementById('f-assigned').value.trim(),
     date:document.getElementById('f-date').value,
     notes:document.getElementById('f-notes').value.trim(),
-    status:modalStatus
+    status:modalStatus,
   };
-  if(editingId){
-    const t=tasks.find(t=>t.id===editingId);
-    if(t) Object.assign(t,data);
-  } else {
-    tasks.push({id:uuid(),createdAt:new Date().toISOString(),...data});
-  }
-  DB.saveTasks(tasks);
+  const base = editingId ? (DB.getTasks().find(t=>t.id===editingId)||{}) : {id:uuid()};
+  await DB.saveTask({...base, ...data});
   closeModal(); render();
 }
 
-function deleteTask(){
+async function deleteTask(){
   if(!editingId||!confirm('Delete this task?')) return;
-  DB.saveTasks(DB.getTasks().filter(t=>t.id!==editingId));
+  await DB.deleteTask(editingId);
   closeModal(); render();
 }
 
@@ -445,7 +434,7 @@ function deleteTask(){
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 document.getElementById('modalOverlay').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
-initPage();
+DB.load().then(initPage);
 </script>
 </body>
 </html>

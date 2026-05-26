@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./js/supabase.js"></script>
+  <script src="./js/db.js"></script>
   <script src="./js/auth.js"></script>
   <style>
     :root {
@@ -166,11 +167,7 @@
 
 <script>
 /* ══════════ DB ══════════ */
-const DB = {
-  getBookings(){ try{return JSON.parse(localStorage.getItem('ark_bookings'))||[];}catch{return[];} },
-  getCosts(){ try{return JSON.parse(localStorage.getItem('ark_costs'))||[];}catch{return[];} },
-  getUnits(){ try{return JSON.parse(localStorage.getItem('ark_units'))||[];}catch{return[];} }
-};
+/* DB comes from js/db.js */;
 
 /* ══════════ HELPERS ══════════ */
 function fmtCurrency(n){ return 'EGP '+Math.round(n||0).toLocaleString(); }
@@ -393,9 +390,7 @@ function renderNet(monthStr, monthBookings){
 }
 
 /* ══════════ INIT ══════════ */
-populateYears();
-populateMonths();
-render();
+DB.load().then(() => { populateYears(); populateMonths(); render(); });
 
 window.onRoleReady = function(role) {
   if (role === 'staff') window.location.replace('./index.html')

@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./js/supabase.js"></script>
+  <script src="./js/db.js"></script>
   <script src="./js/auth.js"></script>
   <style>
     /* ══════════════════════════════════════════ TOKENS */
@@ -471,17 +472,7 @@ const UNITS = {
 };
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-const DB = {
-  getBookings: () => JSON.parse(localStorage.getItem('ark_bookings') || '[]'),
-  getCosts:    () => JSON.parse(localStorage.getItem('ark_costs')    || '[]'),
-  saveCost(c) {
-    const all = this.getCosts();
-    const i = all.findIndex(x => x.id === c.id);
-    i >= 0 ? all[i] = c : all.push(c);
-    localStorage.setItem('ark_costs', JSON.stringify(all));
-  },
-  deleteCost: (id) => localStorage.setItem('ark_costs', JSON.stringify(DB.getCosts().filter(c => c.id !== id))),
-};
+/* DB comes from js/db.js */
 
 const uuid = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 const fmtCurrency = (n) => 'EGP ' + Math.round(n || 0).toLocaleString('en-EG');
@@ -658,7 +649,7 @@ function closeCostModal() {
   editingCostId = null;
 }
 
-function saveCost() {
+async function saveCost() {
   const date   = document.getElementById('cf-date').value;
   const amount = parseFloat(document.getElementById('cf-amount').value);
   const cat    = document.getElementById('cf-category').value;
@@ -669,32 +660,30 @@ function saveCost() {
 
   const cost = {
     id:            editingCostId || uuid(),
-    date,
-    amount,
+    date, amount,
     category:      cat,
     accommodation: document.getElementById('cf-unit').value || null,
     description:   document.getElementById('cf-description').value.trim(),
     paidBy:        document.getElementById('cf-paidBy').value.trim(),
     notes:         document.getElementById('cf-notes').value.trim(),
-    createdAt:     new Date().toISOString(),
   };
 
-  DB.saveCost(cost);
+  await DB.saveCost(cost);
   closeCostModal();
   render();
 }
 
-function deleteCurrentCost() {
+async function deleteCurrentCost() {
   if (!editingCostId) return;
   if (!confirm('Delete this expense entry?')) return;
-  DB.deleteCost(editingCostId);
+  await DB.deleteCost(editingCostId);
   closeCostModal();
   render();
 }
 
-function deleteCostById(id) {
+async function deleteCostById(id) {
   if (!confirm('Delete this expense entry?')) return;
-  DB.deleteCost(id);
+  await DB.deleteCost(id);
   render();
 }
 
@@ -708,8 +697,7 @@ document.getElementById('costOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeCostModal();
 });
 
-initMonthFilter();
-render();
+DB.load().then(() => { initMonthFilter(); render(); });
 </script>
 </body>
 </html>
