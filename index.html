@@ -351,7 +351,7 @@ function getActiveUnits() { return DB.getUnits().filter(u=>u.active); }
 function getUnitById(id)  { return DB.getUnits().find(u=>u.id===id) || {name:id,color:'#999',active:false}; }
 
 /* ══════════ UTILS ══════════ */
-const uuid = ()=>Date.now().toString(36)+Math.random().toString(36).substr(2,9);
+const uuid = ()=>crypto.randomUUID();
 const DAY_NAMES   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PRESET_TAGS = ['Repeat','Long Stay','European','Family','VIP','Solo','Business'];

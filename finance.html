@@ -474,7 +474,7 @@ const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 
 /* DB comes from js/db.js */
 
-const uuid = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+const uuid = () => crypto.randomUUID();
 const fmtCurrency = (n) => 'EGP ' + Math.round(n || 0).toLocaleString('en-EG');
 
 function toYM(date) {
