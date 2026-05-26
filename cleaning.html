@@ -736,7 +736,7 @@ document.addEventListener('click',e=>{
 });
 document.getElementById('modalOverlay').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
-DB.load().then(initPage);
+window.onRoleReady = function(role) { initPage(); }
 </script>
 </body>
 </html>

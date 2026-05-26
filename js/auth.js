@@ -19,19 +19,21 @@ document.documentElement.style.visibility = 'hidden'
   window._role     = profile?.role || 'staff'
   window._userName = profile?.name || session.user.email
 
+  // Load all data now that session is confirmed — RLS will pass
+  if (window.DB) await window.DB.load()
+
   if (window._role === 'staff') {
     document.body.classList.add('staff-mode')
-    // Inject all staff restrictions via CSS
     const style = document.createElement('style')
     style.textContent = `
       body.staff-mode a[href*="analytics.html"] { display: none !important; }
       body.staff-mode #addBookingBtn            { display: none !important; }
+      body.staff-mode #settingsBtn              { display: none !important; }
       body.staff-mode #deleteBookingBtn         { display: none !important; }
       body.staff-mode #deleteCostBtn            { display: none !important; }
       body.staff-mode #deleteBtn                { display: none !important; }
       body.staff-mode #revenue-section          { display: none !important; }
       body.staff-mode #net-section              { display: none !important; }
-      body.staff-mode #settingsBtn              { display: none !important; }
     `
     document.head.appendChild(style)
   }
@@ -54,7 +56,7 @@ document.documentElement.style.visibility = 'hidden'
     navActions.appendChild(btn)
   }
 
-  // Notify page that role is ready
+  // Data is loaded — hand off to page
   if (typeof window.onRoleReady === 'function') window.onRoleReady(window._role)
 
   document.documentElement.style.visibility = ''

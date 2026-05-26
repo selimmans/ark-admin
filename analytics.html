@@ -390,10 +390,9 @@ function renderNet(monthStr, monthBookings){
 }
 
 /* ══════════ INIT ══════════ */
-DB.load().then(() => { populateYears(); populateMonths(); render(); });
-
 window.onRoleReady = function(role) {
-  if (role === 'staff') window.location.replace('./index.html')
+  if (role === 'staff') { window.location.replace('./index.html'); return; }
+  populateYears(); populateMonths(); render();
 }
 </script>
 </body>

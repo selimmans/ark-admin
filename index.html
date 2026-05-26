@@ -737,18 +737,15 @@ document.addEventListener('keydown',e=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 });
 
-DB.load().then(() => { renderSnapshot(); renderCalendar(); });
-
 window.onRoleReady = function(role) {
+  renderSnapshot(); renderCalendar();
   if (role !== 'staff') return
-  // Disable calendar cell clicks and booking block clicks for staff
   const origOpenBooking = window.openBookingModal
   window.openBookingModal = function(booking, preUnit, preDate) {
-    if (!booking) return // block new booking creation
+    if (!booking) return
     origOpenBooking(booking, preUnit, preDate)
   }
-  const origOpenDay = window.openDayModal
-  window.openDayModal = function() {} // staff doesn't need the day detail modal
+  window.openDayModal = function() {}
 }
 </script>
 </body>

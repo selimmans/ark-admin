@@ -697,7 +697,7 @@ document.getElementById('costOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeCostModal();
 });
 
-DB.load().then(() => { initMonthFilter(); render(); });
+window.onRoleReady = function(role) { initMonthFilter(); render(); }
 </script>
 </body>
 </html>
