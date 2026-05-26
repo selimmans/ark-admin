@@ -1,4 +1,5 @@
-document.documentElement.style.visibility = 'hidden'
+document.documentElement.style.opacity = '0'
+document.documentElement.style.transition = 'opacity 180ms ease'
 
 ;(async () => {
   const { data: { session } } = await window._db.auth.getSession()
@@ -17,7 +18,7 @@ document.documentElement.style.visibility = 'hidden'
   if (profileErr || !profile) {
     console.error('Profile load failed:', profileErr?.message)
     await window._db.auth.signOut()
-    document.documentElement.style.visibility = ''
+    document.documentElement.style.opacity = '1'
     document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;color:#8A4A4A">
       Profile load failed — permission denied.<br><br>
       <small>${profileErr?.message || 'No profile row found'}</small><br><br>
@@ -72,7 +73,7 @@ document.documentElement.style.visibility = 'hidden'
   // Data is loaded — hand off to page
   if (typeof window.onRoleReady === 'function') window.onRoleReady(window._role)
 
-  document.documentElement.style.visibility = ''
+  document.documentElement.style.opacity = '1'
 })()
 
 function signOut() {

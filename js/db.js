@@ -92,10 +92,40 @@ function rowToExtra(r) {
 
 // ─── DB object ────────────────────────────────────────────────────────────
 
+const _CACHE_KEY = 'ark_db_v1'
+const _CACHE_TTL = 90_000 // 90 s — serve from cache, refresh silently after
+
 window.DB = {
   _bookings: [], _expenses: [], _tasks: [], _cleaning: [], _extras: [], _units: [],
 
   async load() {
+    // Try sessionStorage cache — instant load, no Supabase round-trip
+    try {
+      const raw = sessionStorage.getItem(_CACHE_KEY)
+      if (raw) {
+        const { ts, d } = JSON.parse(raw)
+        if (Date.now() - ts < _CACHE_TTL) {
+          this._bookings = d.bookings
+          this._expenses = d.expenses
+          this._tasks    = d.tasks
+          this._cleaning = d.cleaning
+          this._extras   = d.extras
+          this._units    = d.units
+          this.setupRealtime()
+          // Refresh silently in background; re-render when done
+          this._fetchAll().then(() => {
+            if (typeof window.onDataChange === 'function') window.onDataChange()
+          })
+          return
+        }
+      }
+    } catch (_) {}
+    // No cache or expired — wait for fresh fetch
+    await this._fetchAll()
+    this.setupRealtime()
+  },
+
+  async _fetchAll() {
     const [b, e, t, c, x, u] = await Promise.all([
       window._db.from('bookings').select('*').order('created_at', { ascending: false }),
       window._db.from('expenses').select('*').order('date', { ascending: false }),
@@ -110,7 +140,20 @@ window.DB = {
     this._cleaning = (c.data || []).map(rowToCleaning)
     this._extras   = (x.data || []).map(rowToExtra)
     this._units    = (u.data || []).map(rowToUnit)
-    this.setupRealtime()
+    this._saveCache()
+  },
+
+  _saveCache() {
+    try {
+      sessionStorage.setItem(_CACHE_KEY, JSON.stringify({
+        ts: Date.now(),
+        d: {
+          bookings: this._bookings, expenses: this._expenses,
+          tasks:    this._tasks,    cleaning: this._cleaning,
+          extras:   this._extras,   units:    this._units,
+        }
+      }))
+    } catch (_) {}
   },
 
   // ── Sync reads (from memory) ──
@@ -130,12 +173,13 @@ window.DB = {
     const saved = rowToBooking(data)
     const idx = this._bookings.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._bookings[idx] = saved; else this._bookings.unshift(saved)
-    return saved
+    this._saveCache(); return saved
   },
   async deleteBooking(id) {
     const { error } = await window._db.from('bookings').delete().eq('id', id)
     if (error) { alert('Delete failed: ' + error.message); throw error }
     this._bookings = this._bookings.filter(x => x.id !== id)
+    this._saveCache()
   },
 
   async saveCost(e)    { return this.saveExpense(e) },
@@ -147,12 +191,13 @@ window.DB = {
     const saved = rowToExpense(data)
     const idx = this._expenses.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._expenses[idx] = saved; else this._expenses.unshift(saved)
-    return saved
+    this._saveCache(); return saved
   },
   async deleteExpense(id) {
     const { error } = await window._db.from('expenses').delete().eq('id', id)
     if (error) { alert('Delete failed: ' + error.message); throw error }
     this._expenses = this._expenses.filter(x => x.id !== id)
+    this._saveCache()
   },
 
   async saveTask(t) {
@@ -162,12 +207,13 @@ window.DB = {
     const saved = rowToTask(data)
     const idx = this._tasks.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._tasks[idx] = saved; else this._tasks.unshift(saved)
-    return saved
+    this._saveCache(); return saved
   },
   async deleteTask(id) {
     const { error } = await window._db.from('tasks').delete().eq('id', id)
     if (error) { alert('Delete failed: ' + error.message); throw error }
     this._tasks = this._tasks.filter(x => x.id !== id)
+    this._saveCache()
   },
 
   async saveCleaning(c) {
@@ -177,12 +223,13 @@ window.DB = {
     const saved = rowToCleaning(data)
     const idx = this._cleaning.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._cleaning[idx] = saved; else this._cleaning.unshift(saved)
-    return saved
+    this._saveCache(); return saved
   },
   async deleteCleaning(id) {
     const { error } = await window._db.from('cleaning_tasks').delete().eq('id', id)
     if (error) { alert('Delete failed: ' + error.message); throw error }
     this._cleaning = this._cleaning.filter(x => x.id !== id)
+    this._saveCache()
   },
 
   async saveExtra(e) {
@@ -192,12 +239,13 @@ window.DB = {
     const saved = rowToExtra(data)
     const idx = this._extras.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._extras[idx] = saved; else this._extras.push(saved)
-    return saved
+    this._saveCache(); return saved
   },
   async deleteExtra(id) {
     const { error } = await window._db.from('extras').delete().eq('id', id)
     if (error) { alert('Delete failed: ' + error.message); throw error }
     this._extras = this._extras.filter(x => x.id !== id)
+    this._saveCache()
   },
 
   async saveUnit(u) {
@@ -207,7 +255,7 @@ window.DB = {
     const saved = rowToUnit(data)
     const idx = this._units.findIndex(x => x.id === saved.id)
     if (idx >= 0) this._units[idx] = saved; else this._units.push(saved)
-    return saved
+    this._saveCache(); return saved
   },
 
   setupRealtime() {
