@@ -1,6 +1,8 @@
 document.documentElement.style.opacity = '0'
 document.documentElement.style.transition = 'opacity 180ms ease'
 
+const _PROFILE_CACHE = 'ark_profile_v1'
+
 ;(async () => {
   const { data: { session } } = await window._db.auth.getSession()
 
@@ -9,22 +11,36 @@ document.documentElement.style.transition = 'opacity 180ms ease'
     return
   }
 
-  const { data: profile, error: profileErr } = await window._db
-    .from('profiles')
-    .select('role, name')
-    .eq('id', session.user.id)
-    .single()
+  // Use cached profile to skip the Supabase round-trip on every tab switch.
+  // Cache is keyed by user ID so it auto-invalidates if a different user logs in.
+  let profile = null
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(_PROFILE_CACHE))
+    if (cached?.uid === session.user.id) profile = cached
+  } catch (_) {}
 
-  if (profileErr || !profile) {
-    console.error('Profile load failed:', profileErr?.message)
-    await window._db.auth.signOut()
-    document.documentElement.style.opacity = '1'
-    document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;color:#8A4A4A">
-      Profile load failed — permission denied.<br><br>
-      <small>${profileErr?.message || 'No profile row found'}</small><br><br>
-      <a href="./auth.html">Back to login</a>
-    </div>`
-    return
+  if (!profile) {
+    const { data, error: profileErr } = await window._db
+      .from('profiles')
+      .select('role, name')
+      .eq('id', session.user.id)
+      .single()
+
+    if (profileErr || !data) {
+      console.error('Profile load failed:', profileErr?.message)
+      await window._db.auth.signOut()
+      sessionStorage.removeItem(_PROFILE_CACHE)
+      document.documentElement.style.opacity = '1'
+      document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;color:#8A4A4A">
+        Profile load failed — permission denied.<br><br>
+        <small>${profileErr?.message || 'No profile row found'}</small><br><br>
+        <a href="./auth.html">Back to login</a>
+      </div>`
+      return
+    }
+
+    profile = { uid: session.user.id, role: data.role, name: data.name }
+    try { sessionStorage.setItem(_PROFILE_CACHE, JSON.stringify(profile)) } catch (_) {}
   }
 
   window._session  = session
@@ -32,7 +48,7 @@ document.documentElement.style.transition = 'opacity 180ms ease'
   window._role     = profile.role
   window._userName = profile.name || session.user.email
 
-  // Load all data now that session is confirmed — RLS will pass
+  // Load all data — hits sessionStorage cache after first load
   if (window.DB) await window.DB.load()
 
   if (window._role === 'staff') {
@@ -77,6 +93,8 @@ document.documentElement.style.transition = 'opacity 180ms ease'
 })()
 
 function signOut() {
+  sessionStorage.removeItem(_PROFILE_CACHE)
+  sessionStorage.removeItem('ark_db_v1')
   window._db.auth.signOut().then(() => {
     window.location.href = './auth.html'
   })
