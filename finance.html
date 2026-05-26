@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARK OS — Finance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./js/supabase.js"></script>
+  <script src="./js/auth.js"></script>
+  <style>
+    /* ══════════════════════════════════════════ TOKENS */
+    :root {
+      --ink:       #1C1A16;
+      --ink-soft:  #2C2A24;
+      --ink-muted: #5A5248;
+      --cream:     #F5F2EC;
+      --sand:      #EAE0CE;
+      --border:    #CEC3B0;
+      --earth:     #B09070;
+      --earth-dim: #8A7055;
+      --sea:       #4A7A8A;
+      --sea-dim:   #3A6070;
+      --sea-pale:  rgba(74,122,138,0.09);
+      --display:   'Cinzel', Georgia, serif;
+      --serif:     'Cormorant Garamond', Georgia, serif;
+      --sans:      'Jost', -apple-system, sans-serif;
+      --positive:  #4A7A4A;
+      --negative:  #8A4A4A;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: var(--sans);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ══════════════════════════════════════════ NAV */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(245,242,236,0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 0.5px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 52px; gap: 20px;
+    }
+    .nav-brand {
+      font-family: var(--display); font-size: 14px; font-weight: 400;
+      letter-spacing: 6px; color: var(--ink); text-decoration: none; white-space: nowrap;
+    }
+    .nav-brand span {
+      font-family: var(--sans); font-size: 9px; font-weight: 300;
+      letter-spacing: 3px; color: var(--ink-muted); text-transform: uppercase;
+      margin-left: 10px; vertical-align: middle;
+    }
+    .nav-tabs { display: flex; gap: 0; border: 0.5px solid var(--border); }
+    .nav-tab {
+      font-family: var(--sans); font-size: 9px; font-weight: 400;
+      letter-spacing: 3px; text-transform: uppercase; color: var(--ink-muted);
+      text-decoration: none; padding: 9px 20px;
+      border-right: 0.5px solid var(--border);
+      transition: background 160ms ease, color 160ms ease; white-space: nowrap;
+    }
+    .nav-tab:last-child { border-right: none; }
+    .nav-tab:hover { background: var(--sand); color: var(--ink); }
+    .nav-tab.active { background: var(--ink); color: var(--cream); }
+    .nav-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ══════════════════════════════════════════ LAYOUT */
+    .page { max-width: 900px; margin: 0 auto; padding: 36px 28px 80px; }
+
+    /* ══════════════════════════════════════════ SECTION HEADER */
+    .section-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 20px; margin-top: 44px;
+    }
+    .section-header:first-child { margin-top: 0; }
+    .section-title {
+      font-family: var(--display); font-size: 10px; font-weight: 400;
+      letter-spacing: 4px; text-transform: uppercase; color: var(--sea-dim);
+      white-space: nowrap;
+    }
+    .section-line { flex: 1; height: 0.5px; background: var(--border); }
+
+    /* ══════════════════════════════════════════ SUMMARY CARDS */
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 700px) { .summary-cards { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 460px) { .summary-cards { grid-template-columns: 1fr; } }
+    .summary-card {
+      border: 0.5px solid var(--border);
+      background: rgba(255,255,255,0.5);
+      padding: 18px 20px 16px;
+    }
+    .card-label {
+      font-family: var(--sans); font-size: 8px; font-weight: 400;
+      letter-spacing: 2.5px; text-transform: uppercase; color: var(--ink-muted);
+      margin-bottom: 10px;
+    }
+    .card-value {
+      font-family: var(--display); font-size: clamp(18px, 3vw, 24px);
+      font-weight: 400; color: var(--ink); letter-spacing: 1px;
+    }
+    .card-value.positive { color: var(--positive); }
+    .card-value.negative { color: var(--negative); }
+    .card-value.warning  { color: var(--earth-dim); }
+    .card-sub {
+      font-family: var(--sans); font-size: 10px; font-weight: 300;
+      color: var(--ink-muted); margin-top: 4px;
+    }
+
+    /* ══════════════════════════════════════════ NET SUMMARY */
+    .net-summary {
+      border: 0.5px solid var(--border);
+      background: rgba(255,255,255,0.5);
+      padding: 20px 24px;
+    }
+    .net-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0;
+      font-family: var(--sans); font-size: 13px; font-weight: 300; color: var(--ink-muted);
+      border-bottom: 0.5px solid rgba(206,195,176,0.5);
+    }
+    .net-row:last-child { border-bottom: none; }
+    .net-row.total {
+      padding-top: 12px; margin-top: 4px;
+      font-family: var(--display); font-size: 15px; font-weight: 400;
+      color: var(--ink); letter-spacing: 1px;
+      border-top: 0.5px solid var(--border); border-bottom: none;
+    }
+    .net-amount { font-weight: 400; }
+    .net-amount.positive { color: var(--positive); }
+    .net-amount.negative { color: var(--negative); }
+
+    /* ══════════════════════════════════════════ MONTH FILTER */
+    .filter-bar {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-label {
+      font-family: var(--sans); font-size: 9px; font-weight: 400;
+      letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted);
+    }
+    .filter-select {
+      padding: 7px 28px 7px 12px;
+      border: 0.5px solid var(--border);
+      background: rgba(255,255,255,0.6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpolyline points='1,1 5,5 9,1' fill='none' stroke='%235A5248' stroke-width='1.2'/%3E%3C/svg%3E") no-repeat right 10px center;
+      font-family: var(--sans); font-size: 12px; font-weight: 300; color: var(--ink);
+      outline: none; appearance: none; -webkit-appearance: none; cursor: pointer;
+      transition: border-color 160ms ease;
+    }
+    .filter-select:focus { border-color: var(--sea); }
+
+    /* ══════════════════════════════════════════ COSTS TABLE */
+    .costs-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0;
+    }
+    .costs-table-wrap { overflow-x: auto; }
+    .costs-table { width: 100%; border-collapse: collapse; min-width: 580px; }
+    .costs-table th {
+      font-family: var(--sans); font-size: 8px; font-weight: 400;
+      letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted);
+      padding: 10px 14px; text-align: left;
+      border-bottom: 0.5px solid var(--border);
+      background: rgba(234,224,206,0.3);
+      white-space: nowrap;
+    }
+    .costs-table td {
+      padding: 11px 14px;
+      border-bottom: 0.5px solid var(--border);
+      font-family: var(--sans); font-size: 12px; font-weight: 300; color: var(--ink-muted);
+      vertical-align: middle;
+    }
+    .costs-table tr:last-child td { border-bottom: none; }
+    .costs-table tr:hover td { background: rgba(234,224,206,0.2); }
+    .cost-desc { font-weight: 400; color: var(--ink); }
+    .cost-amount { font-family: var(--display); font-size: 13px; color: var(--ink); letter-spacing: 0.5px; }
+    .category-chip {
+      display: inline-block;
+      padding: 3px 8px;
+      border: 0.5px solid var(--border);
+      font-family: var(--sans); font-size: 8px; font-weight: 400;
+      letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-muted);
+    }
+    .table-actions { display: flex; gap: 6px; }
+    .btn-tbl {
+      width: 26px; height: 26px;
+      border: 0.5px solid var(--border); background: transparent;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: var(--ink-muted); transition: all 160ms ease;
+    }
+    .btn-tbl:hover { border-color: var(--sea); color: var(--sea-dim); }
+    .btn-tbl.del:hover { border-color: var(--negative); color: var(--negative); }
+    .btn-tbl svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; }
+    .costs-empty {
+      padding: 32px; text-align: center;
+      font-family: var(--serif); font-size: 15px; font-style: italic;
+      font-weight: 300; color: var(--ink-muted);
+    }
+
+    /* ══════════════════════════════════════════ MODAL (shared) */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(28,26,22,0.55); z-index: 500;
+      display: flex; align-items: flex-start; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 260ms ease;
+      overflow-y: auto; padding: 40px 20px;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--cream); width: 100%; max-width: 520px;
+      border: 0.5px solid var(--border);
+      transform: translateY(12px);
+      transition: transform 280ms cubic-bezier(0.4,0,0.2,1);
+      margin: auto;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 18px; border-bottom: 0.5px solid var(--border);
+    }
+    .modal-title {
+      font-family: var(--display); font-size: 10px; font-weight: 400;
+      letter-spacing: 4px; text-transform: uppercase; color: var(--ink);
+    }
+    .modal-close {
+      width: 28px; height: 28px; border: 0.5px solid var(--border);
+      background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-muted); transition: all 160ms ease;
+    }
+    .modal-close:hover { border-color: var(--ink); color: var(--ink); }
+    .modal-close svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 18px 24px; border-top: 0.5px solid var(--border); gap: 8px;
+    }
+
+    /* ══════════════════════════════════════════ FORM */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label {
+      font-family: var(--sans); font-size: 9px; font-weight: 400;
+      letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted);
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 12px;
+      border: 0.5px solid var(--border); background: rgba(255,255,255,0.6);
+      font-family: var(--sans); font-size: 13px; font-weight: 300; color: var(--ink);
+      outline: none; border-radius: 0; appearance: none; -webkit-appearance: none;
+      transition: border-color 180ms ease;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--sea); }
+    .form-textarea { resize: vertical; min-height: 64px; }
+
+    /* ══════════════════════════════════════════ BUTTONS */
+    .btn {
+      font-family: var(--sans); font-size: 9px; font-weight: 400;
+      letter-spacing: 2.5px; text-transform: uppercase;
+      padding: 10px 20px; border: 0.5px solid var(--border);
+      background: transparent; color: var(--ink-muted); cursor: pointer;
+      transition: all 160ms ease;
+    }
+    .btn:hover { border-color: var(--sea); color: var(--sea-dim); background: var(--sea-pale); }
+    .btn.primary { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+    .btn.primary:hover { background: var(--ink-soft); }
+    .btn.danger { color: var(--negative); border-color: rgba(138,74,74,0.4); }
+    .btn.danger:hover { background: rgba(138,74,74,0.08); border-color: var(--negative); }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a class="nav-brand" href="./index.html">ARK <span>OS</span></a>
+  <div class="nav-tabs">
+    <a class="nav-tab" href="./index.html">Calendar</a>
+    <a class="nav-tab" href="./cleaning.html">Cleaning</a>
+    <a class="nav-tab" href="./tasks.html">Tasks</a>
+    <a class="nav-tab" href="./analytics.html">Analytics</a>
+    <a class="nav-tab active" href="./finance.html">Finance</a>
+  </div>
+  <div class="nav-actions">
+    <button class="btn" onclick="openCostModal()">+ Add Expense</button>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- MONTH FILTER -->
+  <div class="filter-bar" style="margin-bottom:28px">
+    <span class="filter-label">Viewing</span>
+    <select class="filter-select" id="monthFilter" onchange="render()"></select>
+  </div>
+
+  <!-- REVENUE SUMMARY -->
+  <div class="section-header">
+    <span class="section-title">Revenue</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="summary-cards">
+    <div class="summary-card">
+      <div class="card-label">Revenue This Month</div>
+      <div class="card-value positive" id="c-revenueMonth">EGP 0</div>
+      <div class="card-sub" id="c-revenueMonthSub">0 confirmed bookings</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-label">Next 30 Days</div>
+      <div class="card-value" id="c-revenueNext30">EGP 0</div>
+      <div class="card-sub">Confirmed upcoming</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-label">Outstanding</div>
+      <div class="card-value warning" id="c-outstanding">EGP 0</div>
+      <div class="card-sub" id="c-outstandingSub">Unpaid confirmed</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-label">Extras This Month</div>
+      <div class="card-value" id="c-extras">EGP 0</div>
+      <div class="card-sub">From confirmed bookings</div>
+    </div>
+  </div>
+
+  <!-- COSTS -->
+  <div class="section-header" style="margin-top:44px">
+    <span class="section-title">Expenses</span>
+    <div class="section-line"></div>
+    <button class="btn" onclick="openCostModal()" style="white-space:nowrap;font-size:8px;padding:7px 14px">+ Add Expense</button>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Category</span>
+    <select class="filter-select" id="categoryFilter" onchange="renderCostsTable()">
+      <option value="">All</option>
+      <option>Groceries</option><option>Maintenance</option><option>Cleaning</option>
+      <option>Staff</option><option>Utilities</option><option>Supplies</option><option>Misc</option>
+    </select>
+  </div>
+
+  <div class="costs-table-wrap">
+    <table class="costs-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Category</th>
+          <th>Unit</th>
+          <th>Description</th>
+          <th>Paid By</th>
+          <th style="text-align:right">Amount</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="costsTbody"></tbody>
+    </table>
+    <div class="costs-empty" id="costsEmpty" style="display:none">No expenses recorded for this period.</div>
+  </div>
+
+  <!-- NET SUMMARY -->
+  <div class="section-header" style="margin-top:44px">
+    <span class="section-title">Net Summary</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="net-summary">
+    <div class="net-row">
+      <span>Revenue This Month</span>
+      <span class="net-amount positive" id="n-revenue">EGP 0</span>
+    </div>
+    <div class="net-row">
+      <span>Expenses This Month</span>
+      <span class="net-amount negative" id="n-costs">EGP 0</span>
+    </div>
+    <div class="net-row total">
+      <span>Net This Month</span>
+      <span class="net-amount" id="n-net">EGP 0</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- COST MODAL -->
+<div class="modal-overlay" id="costOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="costModalTitle">Add Expense</div>
+      <button class="modal-close" onclick="closeCostModal()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="cf-date" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (EGP)</label>
+          <input class="form-input" type="number" id="cf-amount" placeholder="0" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="cf-category">
+            <option value="">Select…</option>
+            <option>Groceries</option><option>Maintenance</option><option>Cleaning</option>
+            <option>Staff</option><option>Utilities</option><option>Supplies</option><option>Misc</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit (optional)</label>
+          <select class="form-select" id="cf-unit">
+            <option value="">All / General</option>
+            <option value="gharbi">Gharbi</option>
+            <option value="bahari">Bahari</option>
+            <option value="annex">The Annex</option>
+            <option value="gibli">Gibli</option>
+            <option value="tent">Bell Tent</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Description</label>
+          <input class="form-input" type="text" id="cf-description" placeholder="What was this for?" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Paid By</label>
+          <input class="form-input" type="text" id="cf-paidBy" placeholder="Name" />
+        </div>
+        <div class="form-group">
+          <!-- spacer -->
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="cf-notes" placeholder="Any additional notes…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn danger" id="deleteCostBtn" onclick="deleteCurrentCost()" style="display:none;margin-right:auto">Delete</button>
+      <button class="btn" onclick="closeCostModal()">Cancel</button>
+      <button class="btn primary" onclick="saveCost()">Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   SHARED (duplicated from index.html for standalone use)
+══════════════════════════════════════════════════════ */
+const UNITS = {
+  gharbi: 'Gharbi', bahari: 'Bahari', annex: 'The Annex', gibli: 'Gibli', tent: 'Bell Tent',
+};
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const DB = {
+  getBookings: () => JSON.parse(localStorage.getItem('ark_bookings') || '[]'),
+  getCosts:    () => JSON.parse(localStorage.getItem('ark_costs')    || '[]'),
+  saveCost(c) {
+    const all = this.getCosts();
+    const i = all.findIndex(x => x.id === c.id);
+    i >= 0 ? all[i] = c : all.push(c);
+    localStorage.setItem('ark_costs', JSON.stringify(all));
+  },
+  deleteCost: (id) => localStorage.setItem('ark_costs', JSON.stringify(DB.getCosts().filter(c => c.id !== id))),
+};
+
+const uuid = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+const fmtCurrency = (n) => 'EGP ' + Math.round(n || 0).toLocaleString('en-EG');
+
+function toYM(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+}
+function fmtMonthLabel(ym) {
+  const [y, m] = ym.split('-');
+  return MONTH_NAMES[parseInt(m)-1] + ' ' + y;
+}
+
+/* ══════════════════════════════════════════════════════
+   MONTH FILTER INIT
+══════════════════════════════════════════════════════ */
+function initMonthFilter() {
+  const select = document.getElementById('monthFilter');
+  const now    = new Date();
+  const months = [];
+  for (let i = -2; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(toYM(d));
+  }
+  select.innerHTML = months.map(ym =>
+    `<option value="${ym}" ${ym === toYM(now) ? 'selected' : ''}>${fmtMonthLabel(ym)}</option>`
+  ).join('');
+}
+
+function getSelectedMonth() {
+  return document.getElementById('monthFilter').value;
+}
+
+function isInMonth(dateStr, ym) {
+  return dateStr && dateStr.startsWith(ym);
+}
+
+/* ══════════════════════════════════════════════════════
+   REVENUE AGGREGATION
+══════════════════════════════════════════════════════ */
+function getMonthRevenue(ym) {
+  const bookings = DB.getBookings().filter(b =>
+    b.status === 'confirmed' && (
+      isInMonth(b.checkIn, ym) || isInMonth(b.checkOut, ym) ||
+      (b.checkIn < ym + '-32' && b.checkOut > ym + '-01')
+    )
+  );
+  // Filter to bookings that overlap the month
+  const [y, m] = ym.split('-').map(Number);
+  const monthStart = new Date(y, m-1, 1);
+  const monthEnd   = new Date(y, m, 1);
+  const inMonth = bookings.filter(b =>
+    new Date(b.checkIn) < monthEnd && new Date(b.checkOut) > monthStart
+  );
+  const revenue      = inMonth.reduce((s, b) => s + (b.finalAmount || 0), 0);
+  const extrasRevenue = inMonth.reduce((s, b) => s + (b.extras || []).reduce((x, e) => x + (e.price || 0), 0), 0);
+  return { revenue, count: inMonth.length, extrasRevenue, bookings: inMonth };
+}
+
+function getNext30Revenue() {
+  const now     = new Date();
+  const future  = new Date(now); future.setDate(future.getDate() + 30);
+  return DB.getBookings()
+    .filter(b => b.status === 'confirmed' && new Date(b.checkIn) >= now && new Date(b.checkIn) <= future)
+    .reduce((s, b) => s + (b.finalAmount || 0), 0);
+}
+
+function getOutstanding() {
+  return DB.getBookings()
+    .filter(b => b.status === 'confirmed' && b.paymentStatus === 'unpaid')
+    .reduce((s, b) => s + (b.finalAmount || 0), 0);
+}
+
+function getMonthCosts(ym) {
+  return DB.getCosts()
+    .filter(c => isInMonth(c.date, ym))
+    .reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+}
+
+/* ══════════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════════ */
+function render() {
+  const ym = getSelectedMonth();
+  const { revenue, count, extrasRevenue } = getMonthRevenue(ym);
+  const outstanding = getOutstanding();
+  const next30      = getNext30Revenue();
+  const costsTotal  = getMonthCosts(ym);
+  const net         = revenue - costsTotal;
+
+  document.getElementById('c-revenueMonth').textContent    = fmtCurrency(revenue);
+  document.getElementById('c-revenueMonthSub').textContent = count + ' confirmed booking' + (count !== 1 ? 's' : '');
+  document.getElementById('c-revenueNext30').textContent   = fmtCurrency(next30);
+  document.getElementById('c-outstanding').textContent     = fmtCurrency(outstanding);
+  document.getElementById('c-extras').textContent          = fmtCurrency(extrasRevenue);
+
+  document.getElementById('n-revenue').textContent = fmtCurrency(revenue);
+  document.getElementById('n-costs').textContent   = '− ' + fmtCurrency(costsTotal);
+  const netEl = document.getElementById('n-net');
+  netEl.textContent = fmtCurrency(Math.abs(net));
+  netEl.className   = 'net-amount ' + (net >= 0 ? 'positive' : 'negative');
+
+  renderCostsTable();
+}
+
+function renderCostsTable() {
+  const ym       = getSelectedMonth();
+  const catFilter = document.getElementById('categoryFilter').value;
+  const tbody    = document.getElementById('costsTbody');
+  const empty    = document.getElementById('costsEmpty');
+
+  let costs = DB.getCosts().filter(c => isInMonth(c.date, ym));
+  if (catFilter) costs = costs.filter(c => c.category === catFilter);
+  costs.sort((a, b) => b.date.localeCompare(a.date));
+
+  tbody.innerHTML = '';
+
+  if (!costs.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  costs.forEach(c => {
+    const tr = document.createElement('tr');
+    const dateObj = new Date(c.date + 'T12:00:00');
+    const dateLabel = `${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]}`;
+    const unitLabel = c.accommodation ? (UNITS[c.accommodation] || c.accommodation) : '—';
+    tr.innerHTML = `
+      <td>${dateLabel}</td>
+      <td><span class="category-chip">${c.category || '—'}</span></td>
+      <td>${unitLabel}</td>
+      <td><span class="cost-desc">${c.description || '—'}</span>${c.notes ? `<br><span style="font-size:10px;color:var(--ink-muted)">${c.notes}</span>` : ''}</td>
+      <td>${c.paidBy || '—'}</td>
+      <td style="text-align:right"><span class="cost-amount">${fmtCurrency(c.amount)}</span></td>
+      <td>
+        <div class="table-actions">
+          <button class="btn-tbl" onclick="openCostModal('${c.id}')">
+            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-tbl del" onclick="deleteCostById('${c.id}')">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   COST MODAL
+══════════════════════════════════════════════════════ */
+let editingCostId = null;
+
+function openCostModal(id = null) {
+  editingCostId = id;
+  const cost = id ? DB.getCosts().find(c => c.id === id) : null;
+
+  document.getElementById('costModalTitle').textContent = cost ? 'Edit Expense' : 'Add Expense';
+  document.getElementById('deleteCostBtn').style.display = cost ? 'block' : 'none';
+
+  document.getElementById('cf-date').value        = cost ? cost.date        : new Date().toISOString().split('T')[0];
+  document.getElementById('cf-amount').value      = cost ? cost.amount      : '';
+  document.getElementById('cf-category').value    = cost ? cost.category    : '';
+  document.getElementById('cf-unit').value        = cost ? (cost.accommodation || '') : '';
+  document.getElementById('cf-description').value = cost ? cost.description : '';
+  document.getElementById('cf-paidBy').value      = cost ? cost.paidBy      : '';
+  document.getElementById('cf-notes').value       = cost ? cost.notes       : '';
+
+  document.getElementById('costOverlay').classList.add('open');
+}
+
+function closeCostModal() {
+  document.getElementById('costOverlay').classList.remove('open');
+  editingCostId = null;
+}
+
+function saveCost() {
+  const date   = document.getElementById('cf-date').value;
+  const amount = parseFloat(document.getElementById('cf-amount').value);
+  const cat    = document.getElementById('cf-category').value;
+
+  if (!date)      { alert('Date is required.');     return; }
+  if (!amount)    { alert('Amount is required.');   return; }
+  if (!cat)       { alert('Category is required.'); return; }
+
+  const cost = {
+    id:            editingCostId || uuid(),
+    date,
+    amount,
+    category:      cat,
+    accommodation: document.getElementById('cf-unit').value || null,
+    description:   document.getElementById('cf-description').value.trim(),
+    paidBy:        document.getElementById('cf-paidBy').value.trim(),
+    notes:         document.getElementById('cf-notes').value.trim(),
+    createdAt:     new Date().toISOString(),
+  };
+
+  DB.saveCost(cost);
+  closeCostModal();
+  render();
+}
+
+function deleteCurrentCost() {
+  if (!editingCostId) return;
+  if (!confirm('Delete this expense entry?')) return;
+  DB.deleteCost(editingCostId);
+  closeCostModal();
+  render();
+}
+
+function deleteCostById(id) {
+  if (!confirm('Delete this expense entry?')) return;
+  DB.deleteCost(id);
+  render();
+}
+
+/* ══════════════════════════════════════════════════════
+   KEYBOARD & INIT
+══════════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCostModal();
+});
+document.getElementById('costOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeCostModal();
+});
+
+initMonthFilter();
+render();
+</script>
+</body>
+</html>

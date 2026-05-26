@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARK OS — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink:       #1C1A16; --ink-soft: #2C2A24; --ink-muted: #5A5248;
+      --cream:     #F5F2EC; --sand:     #EAE0CE; --border:    #CEC3B0;
+      --earth:     #B09070; --earth-dim:#8A7055;
+      --sea:       #4A7A8A; --sea-dim:  #3A6070; --sea-pale:  rgba(74,122,138,0.09);
+      --display:'Cinzel',Georgia,serif; --serif:'Cormorant Garamond',Georgia,serif; --sans:'Jost',-apple-system,sans-serif;
+    }
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .brand {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: 8px;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+    .brand-sub {
+      font-family: var(--sans);
+      font-size: 8px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: 52px;
+    }
+    .divider {
+      width: 0.5px;
+      height: 40px;
+      background: var(--border);
+      margin: 0 auto 52px;
+    }
+    .card {
+      width: 100%;
+      max-width: 360px;
+      padding: 0 24px;
+    }
+
+    .user-select {
+      display: flex;
+      gap: 0;
+      margin-bottom: 28px;
+      border: 0.5px solid var(--border);
+    }
+    .user-btn {
+      flex: 1;
+      font-family: var(--sans);
+      font-size: 8px;
+      font-weight: 400;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      background: transparent;
+      border: none;
+      border-right: 0.5px solid var(--border);
+      padding: 11px 0;
+      cursor: pointer;
+      transition: all 160ms ease;
+    }
+    .user-btn:last-child { border-right: none; }
+    .user-btn:hover { background: var(--sand); color: var(--ink); }
+    .user-btn.active { background: var(--ink); color: var(--cream); }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 16px;
+    }
+    .form-label {
+      font-family: var(--sans);
+      font-size: 8px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+    .form-input {
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      border-bottom: 0.5px solid var(--border);
+      padding: 8px 0;
+      outline: none;
+      width: 100%;
+      transition: border-color 160ms ease;
+    }
+    .form-input:focus { border-bottom-color: var(--sea); }
+    .form-input::placeholder { color: var(--border); }
+
+    .btn-signin {
+      width: 100%;
+      margin-top: 8px;
+      font-family: var(--sans);
+      font-size: 8px;
+      font-weight: 400;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--cream);
+      background: var(--ink);
+      border: none;
+      padding: 14px;
+      cursor: pointer;
+      transition: background 160ms ease;
+    }
+    .btn-signin:hover { background: var(--ink-soft); }
+    .btn-signin:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 300;
+      color: #8A4A4A;
+      margin-top: 14px;
+      text-align: center;
+      min-height: 16px;
+      letter-spacing: 0.3px;
+    }
+  </style>
+</head>
+<body>
+
+  <p class="brand">ARK OS</p>
+  <p class="brand-sub">Operations System</p>
+  <div class="divider"></div>
+
+  <div class="card">
+    <div class="user-select">
+      <button class="user-btn active" id="btn-owner" onclick="selectUser('owner')">Owner</button>
+      <button class="user-btn" id="btn-staff" onclick="selectUser('staff')">Staff</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Password</label>
+      <input class="form-input" type="password" id="password" autocomplete="current-password" placeholder="••••••••" />
+    </div>
+
+    <button class="btn-signin" id="signin-btn" onclick="signIn()">Sign In</button>
+    <p class="error-msg" id="error-msg"></p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./js/supabase.js"></script>
+  <script>
+    // Maps the two user slots to their Supabase email accounts
+    const USER_MAP = {
+      owner: 'owner@ark.local',
+      staff: 'staff@ark.local'
+    }
+
+    let selectedUser = 'owner'
+
+    function selectUser(u) {
+      selectedUser = u
+      document.getElementById('btn-owner').classList.toggle('active', u === 'owner')
+      document.getElementById('btn-staff').classList.toggle('active', u === 'staff')
+      document.getElementById('error-msg').textContent = ''
+      document.getElementById('password').focus()
+    }
+
+    // Redirect if already signed in
+    window._db.auth.getSession().then(({ data: { session } }) => {
+      if (session) window.location.replace('./index.html')
+    })
+
+    document.getElementById('password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') signIn()
+    })
+
+    async function signIn() {
+      const password = document.getElementById('password').value
+      const btn      = document.getElementById('signin-btn')
+      const errEl    = document.getElementById('error-msg')
+
+      errEl.textContent = ''
+      btn.disabled = true
+      btn.textContent = 'Signing in…'
+
+      const email = USER_MAP[selectedUser]
+      const { error } = await window._db.auth.signInWithPassword({ email, password })
+
+      if (error) {
+        errEl.textContent = 'Wrong password.'
+        btn.disabled = false
+        btn.textContent = 'Sign In'
+        return
+      }
+
+      window.location.replace('./index.html')
+    }
+  </script>
+</body>
+</html>
