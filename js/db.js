@@ -91,6 +91,36 @@ function rowToExtra(r) {
   return { id: r.id, name: r.name, defaultPrice: r.default_price || 0 }
 }
 
+// ─── Offline mutation queue ───────────────────────────────────────────────
+// Writes that fail while offline are queued in localStorage and replayed
+// automatically the moment the device comes back online.
+
+const _QUEUE_KEY = 'ark_mutation_queue'
+
+function _getQueue()  { try { return JSON.parse(localStorage.getItem(_QUEUE_KEY)) || [] } catch(_) { return [] } }
+function _saveQueue(q){ try { localStorage.setItem(_QUEUE_KEY, JSON.stringify(q)) } catch(_) {} }
+
+function _enqueue(method, arg) {
+  const q = _getQueue()
+  q.push({ method, arg, ts: Date.now() })
+  _saveQueue(q)
+  console.log(`[ARK] Queued offline: ${method}`)
+}
+
+async function _replayQueue() {
+  const q = _getQueue()
+  if (!q.length) return
+  console.log(`[ARK] Replaying ${q.length} queued mutation(s)`)
+  _saveQueue([]) // clear before replaying so a second reconnect doesn't double-replay
+  for (const op of q) {
+    try { await window.DB[op.method](op.arg) }
+    catch(e) { console.error(`[ARK] Failed to replay ${op.method}:`, e) }
+  }
+  if (typeof window.onDataChange === 'function') window.onDataChange()
+}
+
+window.addEventListener('online', _replayQueue)
+
 // ─── DB object ────────────────────────────────────────────────────────────
 
 const _CACHE_KEY = 'ark_db_v1'
@@ -166,8 +196,16 @@ window.DB = {
   getExtras()   { return this._extras },
   getUnits()    { return this._units },
 
-  // ── Async writes ──
+  // ── Async writes — offline-safe ──
+  // If the device is offline the write is applied to memory immediately
+  // (optimistic) and queued for replay when connectivity returns.
+
   async saveBooking(b) {
+    if (!navigator.onLine) {
+      const idx = this._bookings.findIndex(x => x.id === b.id)
+      if (idx >= 0) this._bookings[idx] = b; else this._bookings.unshift(b)
+      this._saveCache(); _enqueue('saveBooking', b); return b
+    }
     const { data, error } = await window._db.from('bookings')
       .upsert(bookingToRow(b), { onConflict: 'id' }).select().single()
     if (error) { alert('Save failed: ' + error.message); throw error }
@@ -177,15 +215,21 @@ window.DB = {
     this._saveCache(); return saved
   },
   async deleteBooking(id) {
-    const { error } = await window._db.from('bookings').delete().eq('id', id)
-    if (error) { alert('Delete failed: ' + error.message); throw error }
     this._bookings = this._bookings.filter(x => x.id !== id)
     this._saveCache()
+    if (!navigator.onLine) { _enqueue('deleteBooking', id); return }
+    const { error } = await window._db.from('bookings').delete().eq('id', id)
+    if (error) { alert('Delete failed: ' + error.message); throw error }
   },
 
   async saveCost(e)    { return this.saveExpense(e) },
   async deleteCost(id) { return this.deleteExpense(id) },
   async saveExpense(e) {
+    if (!navigator.onLine) {
+      const idx = this._expenses.findIndex(x => x.id === e.id)
+      if (idx >= 0) this._expenses[idx] = e; else this._expenses.unshift(e)
+      this._saveCache(); _enqueue('saveExpense', e); return e
+    }
     const { data, error } = await window._db.from('expenses')
       .upsert(expenseToRow(e), { onConflict: 'id' }).select().single()
     if (error) { alert('Save failed: ' + error.message); throw error }
@@ -195,13 +239,19 @@ window.DB = {
     this._saveCache(); return saved
   },
   async deleteExpense(id) {
-    const { error } = await window._db.from('expenses').delete().eq('id', id)
-    if (error) { alert('Delete failed: ' + error.message); throw error }
     this._expenses = this._expenses.filter(x => x.id !== id)
     this._saveCache()
+    if (!navigator.onLine) { _enqueue('deleteExpense', id); return }
+    const { error } = await window._db.from('expenses').delete().eq('id', id)
+    if (error) { alert('Delete failed: ' + error.message); throw error }
   },
 
   async saveTask(t) {
+    if (!navigator.onLine) {
+      const idx = this._tasks.findIndex(x => x.id === t.id)
+      if (idx >= 0) this._tasks[idx] = t; else this._tasks.unshift(t)
+      this._saveCache(); _enqueue('saveTask', t); return t
+    }
     const { data, error } = await window._db.from('tasks')
       .upsert(taskToRow(t), { onConflict: 'id' }).select().single()
     if (error) { alert('Save failed: ' + error.message); throw error }
@@ -211,13 +261,19 @@ window.DB = {
     this._saveCache(); return saved
   },
   async deleteTask(id) {
-    const { error } = await window._db.from('tasks').delete().eq('id', id)
-    if (error) { alert('Delete failed: ' + error.message); throw error }
     this._tasks = this._tasks.filter(x => x.id !== id)
     this._saveCache()
+    if (!navigator.onLine) { _enqueue('deleteTask', id); return }
+    const { error } = await window._db.from('tasks').delete().eq('id', id)
+    if (error) { alert('Delete failed: ' + error.message); throw error }
   },
 
   async saveCleaning(c) {
+    if (!navigator.onLine) {
+      const idx = this._cleaning.findIndex(x => x.id === c.id)
+      if (idx >= 0) this._cleaning[idx] = c; else this._cleaning.unshift(c)
+      this._saveCache(); _enqueue('saveCleaning', c); return c
+    }
     const { data, error } = await window._db.from('cleaning_tasks')
       .upsert(cleaningToRow(c), { onConflict: 'id' }).select().single()
     if (error) { alert('Save failed: ' + error.message); throw error }
@@ -227,13 +283,19 @@ window.DB = {
     this._saveCache(); return saved
   },
   async deleteCleaning(id) {
-    const { error } = await window._db.from('cleaning_tasks').delete().eq('id', id)
-    if (error) { alert('Delete failed: ' + error.message); throw error }
     this._cleaning = this._cleaning.filter(x => x.id !== id)
     this._saveCache()
+    if (!navigator.onLine) { _enqueue('deleteCleaning', id); return }
+    const { error } = await window._db.from('cleaning_tasks').delete().eq('id', id)
+    if (error) { alert('Delete failed: ' + error.message); throw error }
   },
 
   async saveExtra(e) {
+    if (!navigator.onLine) {
+      const idx = this._extras.findIndex(x => x.id === e.id)
+      if (idx >= 0) this._extras[idx] = e; else this._extras.push(e)
+      this._saveCache(); _enqueue('saveExtra', e); return e
+    }
     const { data, error } = await window._db.from('extras')
       .upsert(extraToRow(e), { onConflict: 'id' }).select().single()
     if (error) { alert('Save failed: ' + error.message); throw error }
