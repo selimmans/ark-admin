@@ -499,7 +499,7 @@ function renderCalendar() {
 
   // Unit rows
   let dragUnitId=null;
-  DB.getUnits().filter(u=>u.active).forEach(unit=>{
+  DB.getUnits().filter(u=>u.active).sort((a,b)=>a.sortOrder-b.sortOrder).forEach(unit=>{
     const lbl=document.createElement('div'); lbl.className='cal-unit-label';
     lbl.innerHTML=`<div class="cal-unit-color-bar" style="background:${unit.color}"></div><div class="cal-unit-name">${unit.name}</div>`;
     lbl.draggable=true;
