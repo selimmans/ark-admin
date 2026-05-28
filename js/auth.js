@@ -86,27 +86,64 @@ const _PROFILE_CACHE = 'ark_profile_v1'
     bell.onclick = async () => {
       bell.textContent = '⏳'
       bell.disabled = true
-      // Re-request permission if needed
-      if (Notification.permission === 'default') await Notification.requestPermission()
-      if (Notification.permission !== 'granted') {
-        alert('Notifications are blocked. Enable them in your browser/phone settings for this site.')
-        bell.textContent = '🔔'; bell.disabled = false; return
-      }
-      // Re-register subscription
-      if (typeof window.setupNotifications === 'function') await window.setupNotifications()
-      // Fire a test notification
+      const log = []
       try {
+        log.push('Permission: ' + Notification.permission)
+        if (Notification.permission === 'default') {
+          const r = await Notification.requestPermission()
+          log.push('After prompt: ' + r)
+        }
+        if (Notification.permission !== 'granted') {
+          alert('Blocked.\n\nGo to Settings → Safari → [this site] → Notifications → Allow.\n\n' + log.join('\n'))
+          bell.textContent = '🔔'; bell.disabled = false; return
+        }
+
         const reg = await navigator.serviceWorker.ready
-        await reg.showNotification('ARK — Notifications Active', {
-          body: 'You\'ll receive alerts for new guest requests.',
-          icon: './icons/icon-192.png',
-          badge: './icons/icon-192.png',
-          tag: 'ark-test',
+        log.push('SW: ready')
+
+        let sub = await reg.pushManager.getSubscription()
+        log.push('Existing sub: ' + (sub ? 'yes' : 'no'))
+
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: _urlB64ToUint8(VAPID_PUBLIC_KEY)
+          })
+          log.push('New sub created ✓')
+        }
+
+        const j = sub.toJSON()
+        log.push('Endpoint: …' + j.endpoint.slice(-30))
+
+        const { error: upsertErr } = await window._db.from('push_subscriptions').upsert({
+          user_id:  window._user?.id,
+          endpoint: j.endpoint,
+          p256dh:   j.keys.p256dh,
+          auth:     j.keys.auth,
+        }, { onConflict: 'user_id,endpoint' })
+
+        if (upsertErr) {
+          log.push('DB save FAILED: ' + upsertErr.message)
+          alert('Subscription save failed:\n\n' + log.join('\n'))
+          bell.textContent = '🔔'; bell.disabled = false; return
+        }
+        log.push('DB save: OK ✓')
+
+        // Fire a test push via the Edge Function
+        const testRes = await fetch('https://fqpxbvpjugbqelivtyae.supabase.co/functions/v1/notify-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxcHhidnBqdWdicWVsaXZ0eWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NDMxODMsImV4cCI6MjA5NTMxOTE4M30.oAekeolXabUxZmS3EmpdkS-hNs-OBuuURhyDzA2zuM8' },
+          body: JSON.stringify({ type: 'general', guest_name: 'Test' }),
         })
+        const testJson = await testRes.json()
+        log.push('Test push: ' + JSON.stringify(testJson))
+
+        alert('Done!\n\n' + log.join('\n'))
         bell.textContent = '✓'
-        setTimeout(() => { bell.textContent = '🔔'; bell.disabled = false }, 2000)
+        setTimeout(() => { bell.textContent = '🔔'; bell.disabled = false }, 3000)
       } catch(e) {
-        alert('Notification test failed: ' + e.message)
+        log.push('ERROR: ' + e.message)
+        alert('Failed at step:\n\n' + log.join('\n'))
         bell.textContent = '🔔'; bell.disabled = false
       }
     }
