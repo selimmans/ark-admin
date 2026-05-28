@@ -67,23 +67,60 @@ const _PROFILE_CACHE = 'ark_profile_v1'
     document.head.appendChild(style)
   }
 
-  // Inject sign-out button into nav
+  // Inject nav buttons
   const navActions = document.querySelector('.nav-actions')
   if (navActions) {
-    const btn = document.createElement('button')
-    btn.setAttribute('onclick', 'signOut()')
-    btn.className = 'btn-signout'
-    btn.style.cssText = [
+    const btnStyle = [
       'font-family:var(--sans)', 'font-size:8px', 'font-weight:400',
       'letter-spacing:2px', 'text-transform:uppercase', 'padding:7px 14px',
       'border:0.5px solid var(--border)', 'background:transparent',
       'color:var(--ink-muted)', 'cursor:pointer', 'white-space:nowrap',
       'transition:all 160ms ease'
     ].join(';')
-    btn.textContent = window._userName + ' · Sign Out'
-    btn.onmouseenter = () => { btn.style.borderColor = 'var(--sea)'; btn.style.color = 'var(--sea-dim)' }
-    btn.onmouseleave = () => { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--ink-muted)' }
-    navActions.appendChild(btn)
+
+    // Bell button — force-register push and send a test notification
+    const bell = document.createElement('button')
+    bell.title = 'Test notifications'
+    bell.style.cssText = btnStyle + ';padding:7px 10px;font-size:13px;letter-spacing:0'
+    bell.textContent = '🔔'
+    bell.onclick = async () => {
+      bell.textContent = '⏳'
+      bell.disabled = true
+      // Re-request permission if needed
+      if (Notification.permission === 'default') await Notification.requestPermission()
+      if (Notification.permission !== 'granted') {
+        alert('Notifications are blocked. Enable them in your browser/phone settings for this site.')
+        bell.textContent = '🔔'; bell.disabled = false; return
+      }
+      // Re-register subscription
+      if (typeof window.setupNotifications === 'function') await window.setupNotifications()
+      // Fire a test notification
+      try {
+        const reg = await navigator.serviceWorker.ready
+        await reg.showNotification('ARK — Notifications Active', {
+          body: 'You\'ll receive alerts for new guest requests.',
+          icon: './icons/icon-192.png',
+          badge: './icons/icon-192.png',
+          tag: 'ark-test',
+        })
+        bell.textContent = '✓'
+        setTimeout(() => { bell.textContent = '🔔'; bell.disabled = false }, 2000)
+      } catch(e) {
+        alert('Notification test failed: ' + e.message)
+        bell.textContent = '🔔'; bell.disabled = false
+      }
+    }
+    navActions.appendChild(bell)
+
+    // Sign out button
+    const signOutBtn = document.createElement('button')
+    signOutBtn.setAttribute('onclick', 'signOut()')
+    signOutBtn.className = 'btn-signout'
+    signOutBtn.style.cssText = btnStyle
+    signOutBtn.textContent = window._userName + ' · Sign Out'
+    signOutBtn.onmouseenter = () => { signOutBtn.style.borderColor = 'var(--sea)'; signOutBtn.style.color = 'var(--sea-dim)' }
+    signOutBtn.onmouseleave = () => { signOutBtn.style.borderColor = 'var(--border)'; signOutBtn.style.color = 'var(--ink-muted)' }
+    navActions.appendChild(signOutBtn)
   }
 
   // Data is loaded — hand off to page

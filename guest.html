@@ -513,6 +513,7 @@ async function submitGrocery() {
     return
   }
 
+  btn.innerHTML = 'Place Grocery Order'
   _cart = {}
   renderGrocery()
   document.getElementById('groceryNotes').value = ''

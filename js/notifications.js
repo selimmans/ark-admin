@@ -31,18 +31,25 @@ window.setupNotifications = async function() {
         userVisibleOnly: true,
         applicationServerKey: _urlB64ToUint8(VAPID_PUBLIC_KEY)
       })
+      console.log('[ARK] New push subscription created')
+    } else {
+      console.log('[ARK] Existing push subscription found')
     }
 
     // Store subscription in Supabase (upsert — safe to call every login)
     const j = sub.toJSON()
-    await window._db.from('push_subscriptions').upsert({
+    const { error: upsertErr } = await window._db.from('push_subscriptions').upsert({
       user_id:  window._user.id,
       endpoint: j.endpoint,
       p256dh:   j.keys.p256dh,
       auth:     j.keys.auth,
     }, { onConflict: 'user_id,endpoint' })
 
-    console.log('[ARK] Push subscription active')
+    if (upsertErr) {
+      console.error('[ARK] Push subscription save failed:', upsertErr.message)
+    } else {
+      console.log('[ARK] Push subscription saved to DB ✓')
+    }
   } catch(e) {
     console.warn('[ARK] Push subscription failed:', e.message)
   }
