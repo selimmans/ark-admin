@@ -336,7 +336,7 @@
     <div class="summary-card">
       <div class="card-label">Next 30 Days</div>
       <div class="card-value" id="c-revenueNext30">EGP 0</div>
-      <div class="card-sub">Confirmed upcoming</div>
+      <div class="card-sub" id="c-revenueNext30Sub">Confirmed upcoming</div>
     </div>
     <div class="summary-card">
       <div class="card-label">Outstanding</div>
@@ -567,6 +567,9 @@ function render() {
   document.getElementById('c-revenueMonth').textContent    = fmtCurrency(revenue);
   document.getElementById('c-revenueMonthSub').textContent = count + ' paid booking' + (count !== 1 ? 's' : '');
   document.getElementById('c-revenueNext30').textContent   = fmtCurrency(next30);
+  const n30from = new Date(); const n30to = new Date(); n30to.setDate(n30to.getDate()+30);
+  const fmtShort = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  document.getElementById('c-revenueNext30Sub').textContent = fmtShort(n30from) + ' – ' + fmtShort(n30to);
   document.getElementById('c-outstanding').textContent     = fmtCurrency(outstanding);
   document.getElementById('c-extras').textContent          = fmtCurrency(extrasRevenue);
 
