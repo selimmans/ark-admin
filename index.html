@@ -146,6 +146,10 @@
     .btn-remove-extra{width:26px;height:34px;flex-shrink:0;border:0.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink-muted);transition:all 160ms ease;}
     .btn-remove-extra:hover{border-color:var(--negative);color:var(--negative);}
     .btn-remove-extra svg{width:10px;height:10px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;}
+    .extra-qty-wrap{display:flex;align-items:center;gap:0;border:0.5px solid var(--border);flex-shrink:0;}
+    .extra-qty-btn{width:26px;height:34px;border:none;background:transparent;cursor:pointer;font-size:15px;color:var(--ink-muted);display:flex;align-items:center;justify-content:center;transition:background 140ms ease;}
+    .extra-qty-btn:hover{background:var(--sand);color:var(--ink);}
+    .extra-qty-val{width:28px;text-align:center;font-family:var(--sans);font-size:12px;font-weight:400;color:var(--ink);border-left:0.5px solid var(--border);border-right:0.5px solid var(--border);height:34px;line-height:34px;}
     .btn-add-extra{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border:0.5px dashed var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;width:100%;text-align:center;transition:all 160ms ease;}
     .btn-add-extra:hover{border-color:var(--sea);color:var(--sea-dim);border-style:solid;}
 
@@ -302,9 +306,9 @@
             <div class="pricing-row"><span id="nightsLabel">— nights</span><span id="baseLabel">EGP 0</span></div>
             <div class="pricing-row"><span>Cleaning</span><span id="cleaningLabel">EGP 0</span></div>
             <div class="pricing-row"><span>Extras</span><span id="extrasLabel">EGP 0</span></div>
+            <div class="pricing-row total"><span>Subtotal</span><span id="suggestedLabel">EGP 0</span></div>
             <div class="pricing-row"><span>Discount</span><input class="pricing-discount-input" type="number" id="f-discount" value="0" min="0" oninput="updatePricing()" /></div>
-            <div class="pricing-row total"><span>Suggested Total</span><span id="suggestedLabel">EGP 0</span></div>
-            <div class="pricing-row final"><span style="font-weight:400;color:var(--ink)">Final Amount</span><input class="pricing-final-input" type="number" id="f-finalAmount" value="0" min="0" /></div>
+            <div class="pricing-row final"><span style="font-weight:400;color:var(--ink)">Total</span><input class="pricing-final-input" type="number" id="f-finalAmount" value="0" min="0" oninput="onTotalChange()" /></div>
           </div>
         </div>
         <div class="form-divider"></div>
@@ -402,9 +406,10 @@ function calcNights(i,o) { return Math.round((new Date(o)-new Date(i))/86400000)
 function calcPricing(units,checkIn,checkOut,extras,discount) {
   const nights=calcNights(checkIn,checkOut); let base=0,clean=0;
   (units||[]).forEach(uid=>{ const u=getUnitById(uid); base+=nights*(parseFloat(u.nightlyRate)||0); clean+=parseFloat(u.cleaningFee)||0; });
-  const extTotal=(extras||[]).reduce((s,e)=>s+(parseFloat(e.price)||0),0);
-  const suggested=base+clean+extTotal-(parseFloat(discount)||0);
-  return {nights,base,clean,extTotal,suggested};
+  const extTotal=(extras||[]).reduce((s,e)=>s+(parseFloat(e.price)||0)*(e.qty||1),0);
+  const subtotal=base+clean+extTotal;
+  const suggested=subtotal-(parseFloat(discount)||0);
+  return {nights,base,clean,extTotal,subtotal,suggested};
 }
 
 function hasConflict(nb,all) {
@@ -671,15 +676,27 @@ function updatePricing(){
   document.getElementById('baseLabel').textContent=fmtCurrency(p.base);
   document.getElementById('cleaningLabel').textContent=fmtCurrency(p.clean);
   document.getElementById('extrasLabel').textContent=fmtCurrency(p.extTotal);
-  document.getElementById('suggestedLabel').textContent=fmtCurrency(p.suggested);
-  const fi=document.getElementById('f-finalAmount');
-  if(!fi.value||parseFloat(fi.value)===0) fi.value=Math.round(p.suggested);
+  document.getElementById('suggestedLabel').textContent=fmtCurrency(p.subtotal);
+  // Update total = subtotal - discount (only if user hasn't typed a custom total)
+  document.getElementById('f-finalAmount').value=Math.round(p.suggested);
 }
 
-function renderExtrasList(extras){ const l=document.getElementById('extrasList'); l.innerHTML=''; extras.forEach(e=>addExtraRow(e.name,e.price)); }
-function addExtraRow(name='',price=''){
+// When user edits the Total field directly, back-calculate the discount
+function onTotalChange(){
+  const ci=getCheckIn(),co=getCheckOut();
+  if(!ci||!co||!selectedUnits.size) return;
+  const extras=getExtrasFromForm();
+  const p=calcPricing([...selectedUnits],ci,co,extras,0);
+  const total=parseFloat(document.getElementById('f-finalAmount').value)||0;
+  const discount=Math.max(0,Math.round(p.subtotal-total));
+  document.getElementById('f-discount').value=discount;
+  document.getElementById('suggestedLabel').textContent=fmtCurrency(p.subtotal);
+}
+
+function renderExtrasList(extras){ const l=document.getElementById('extrasList'); l.innerHTML=''; extras.forEach(e=>addExtraRow(e.name,e.price,e.qty||1)); }
+function addExtraRow(name='',price='',qty=1){
   const l=document.getElementById('extrasList'), row=document.createElement('div'); row.className='extra-row';
-  row.innerHTML=`<input class="form-input extra-name" type="text" list="extrasSuggestions" placeholder="Extra name" value="${name}" oninput="onExtraNameInput(this)" onchange="updatePricing()" /><input class="form-input price extra-price" type="number" placeholder="Price" value="${price}" min="0" oninput="updatePricing()" /><button class="btn-remove-extra" onclick="this.parentElement.remove();updatePricing()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+  row.innerHTML=`<input class="form-input extra-name" type="text" list="extrasSuggestions" placeholder="Extra name" value="${name}" oninput="onExtraNameInput(this)" onchange="updatePricing()" /><div class="extra-qty-wrap"><button type="button" class="extra-qty-btn" onclick="changeExtraQty(this,-1)">−</button><div class="extra-qty-val">${qty}</div><button type="button" class="extra-qty-btn" onclick="changeExtraQty(this,1)">+</button></div><input class="form-input price extra-price" type="number" placeholder="Price" value="${price}" min="0" oninput="updatePricing()" /><button class="btn-remove-extra" onclick="this.parentElement.remove();updatePricing()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   l.appendChild(row);
 }
 function onExtraNameInput(input){
@@ -687,7 +704,16 @@ function onExtraNameInput(input){
   if(m){ input.parentElement.querySelector('.extra-price').value=m.defaultPrice; updatePricing(); }
 }
 function getExtrasFromForm(){
-  return Array.from(document.querySelectorAll('.extra-row')).map(r=>({name:r.querySelector('.extra-name').value.trim(),price:parseFloat(r.querySelector('.extra-price').value)||0})).filter(e=>e.name);
+  return Array.from(document.querySelectorAll('.extra-row')).map(r=>({
+    name:  r.querySelector('.extra-name').value.trim(),
+    qty:   parseInt(r.querySelector('.extra-qty-val').textContent)||1,
+    price: parseFloat(r.querySelector('.extra-price').value)||0,
+  })).filter(e=>e.name);
+}
+function changeExtraQty(btn,delta){
+  const val=btn.parentElement.querySelector('.extra-qty-val');
+  val.textContent=Math.max(1,(parseInt(val.textContent)||1)+delta);
+  updatePricing();
 }
 function refreshExtrasSuggestions(){
   const dl=document.getElementById('extrasSuggestions'); dl.innerHTML='';
@@ -860,12 +886,9 @@ window.onRoleReady = function(role) {
   renderSnapshot(); renderCalendar();
   window.onDataChange = function() { renderSnapshot(); if(currentCalView==='grid') renderCalendar(); else renderListView(); }
   if (role !== 'staff') return
-  const origOpenBooking = window.openBookingModal
-  window.openBookingModal = function(booking, preUnit, preDate) {
-    if (!booking) return
-    origOpenBooking(booking, preUnit, preDate)
-  }
-  window.openDayModal = function() {}
+  // Staff: block booking modal entirely — no details, no pricing visible
+  window.openBookingModal = function() {}
+  window.openDayModal    = function() {}
 }
 </script>
 <script>if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}</script>
