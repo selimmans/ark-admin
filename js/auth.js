@@ -90,6 +90,9 @@ const _PROFILE_CACHE = 'ark_profile_v1'
   if (typeof window.onRoleReady === 'function') window.onRoleReady(window._role)
 
   document.documentElement.style.opacity = '1'
+
+  // Set up push notifications (non-blocking)
+  if (typeof window.setupNotifications === 'function') window.setupNotifications()
 })()
 
 function signOut() {

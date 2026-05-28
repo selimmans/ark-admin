@@ -1,4 +1,5 @@
-const CACHE = 'ark-os-v1'
+const CACHE   = 'ark-os-v2'
+const BASE_URL = 'https://selimmans.github.io/ark-admin'
 
 const SHELL = [
   './',
@@ -11,6 +12,7 @@ const SHELL = [
   './js/supabase.js',
   './js/db.js',
   './js/auth.js',
+  './js/notifications.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
@@ -57,6 +59,37 @@ self.addEventListener('fetch', e => {
         if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()))
         return r
       }).catch(() => caches.match('./index.html')) // offline fallback
+    })
+  )
+})
+
+// ── Push: show notification when a background push arrives ──
+self.addEventListener('push', e => {
+  let data = { title: 'ARK OS', body: 'New update', icon: './icons/icon-192.png' }
+  try { data = { ...data, ...e.data.json() } } catch(_) {}
+
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body:    data.body,
+      icon:    data.icon  || './icons/icon-192.png',
+      badge:   './icons/icon-192.png',
+      tag:     'ark-daily',
+      renotify: false,
+      data:    { url: data.url || BASE_URL + '/index.html' },
+    })
+  )
+})
+
+// ── Notification click: focus/open the app ──
+self.addEventListener('notificationclick', e => {
+  e.notification.close()
+  const target = e.notification.data?.url || BASE_URL + '/index.html'
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) {
+        if (c.url.includes('ark-admin') && 'focus' in c) return c.focus()
+      }
+      return clients.openWindow(target)
     })
   )
 })
