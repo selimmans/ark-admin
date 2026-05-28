@@ -514,22 +514,13 @@ function isInMonth(dateStr, ym) {
    REVENUE AGGREGATION
 ══════════════════════════════════════════════════════ */
 function getMonthRevenue(ym) {
-  const bookings = DB.getBookings().filter(b =>
-    b.status === 'confirmed' && (
-      isInMonth(b.checkIn, ym) || isInMonth(b.checkOut, ym) ||
-      (b.checkIn < ym + '-32' && b.checkOut > ym + '-01')
-    )
+  // Revenue is recognised when payment is received (paidAt), not when the stay occurs
+  const paid = DB.getBookings().filter(b =>
+    b.status !== 'cancelled' && b.paidAt && b.paidAt.startsWith(ym)
   );
-  // Filter to bookings that overlap the month
-  const [y, m] = ym.split('-').map(Number);
-  const monthStart = new Date(y, m-1, 1);
-  const monthEnd   = new Date(y, m, 1);
-  const inMonth = bookings.filter(b =>
-    new Date(b.checkIn) < monthEnd && new Date(b.checkOut) > monthStart
-  );
-  const revenue      = inMonth.reduce((s, b) => s + (b.finalAmount || 0), 0);
-  const extrasRevenue = inMonth.reduce((s, b) => s + (b.extras || []).reduce((x, e) => x + (e.price || 0), 0), 0);
-  return { revenue, count: inMonth.length, extrasRevenue, bookings: inMonth };
+  const revenue       = paid.reduce((s, b) => s + (b.finalAmount || 0), 0);
+  const extrasRevenue = paid.reduce((s, b) => s + (b.extras || []).reduce((x, e) => x + (e.price || 0), 0), 0);
+  return { revenue, count: paid.length, extrasRevenue, bookings: paid };
 }
 
 function getNext30Revenue() {
@@ -564,7 +555,7 @@ function render() {
   const net         = revenue - costsTotal;
 
   document.getElementById('c-revenueMonth').textContent    = fmtCurrency(revenue);
-  document.getElementById('c-revenueMonthSub').textContent = count + ' confirmed booking' + (count !== 1 ? 's' : '');
+  document.getElementById('c-revenueMonthSub').textContent = count + ' paid booking' + (count !== 1 ? 's' : '');
   document.getElementById('c-revenueNext30').textContent   = fmtCurrency(next30);
   document.getElementById('c-outstanding').textContent     = fmtCurrency(outstanding);
   document.getElementById('c-extras').textContent          = fmtCurrency(extrasRevenue);

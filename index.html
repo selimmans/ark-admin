@@ -62,7 +62,10 @@
     .cal-day-name{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
     .cal-day-num{font-family:var(--display);font-size:16px;font-weight:400;color:var(--ink);margin-top:2px;letter-spacing:1px;}
     .cal-day-header.today .cal-day-num{color:var(--sea-dim);}
-    .cal-unit-label{padding:0 12px;display:flex;align-items:center;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);min-height:68px;background:rgba(245,242,236,0.6);}
+    .cal-unit-label{padding:0 12px;display:flex;align-items:center;border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border);min-height:68px;background:rgba(245,242,236,0.6);cursor:grab;user-select:none;}
+    .cal-unit-label:active{cursor:grabbing;}
+    .cal-unit-label.drag-over{background:var(--sea-pale)!important;border-left:2px solid var(--sea);}
+    .cal-unit-label.dragging{opacity:0.35;}
     .cal-unit-name{font-family:var(--display);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
     .cal-unit-color-bar{width:3px;height:16px;border-radius:1px;margin-right:8px;flex-shrink:0;}
     .cal-days-row{position:relative;display:grid;grid-column:2/span 7;grid-template-columns:repeat(7,1fr);border-bottom:0.5px solid var(--border);min-height:68px;}
@@ -495,9 +498,31 @@ function renderCalendar() {
   });
 
   // Unit rows
+  let dragUnitId=null;
   DB.getUnits().filter(u=>u.active).forEach(unit=>{
     const lbl=document.createElement('div'); lbl.className='cal-unit-label';
     lbl.innerHTML=`<div class="cal-unit-color-bar" style="background:${unit.color}"></div><div class="cal-unit-name">${unit.name}</div>`;
+    lbl.draggable=true;
+    lbl.dataset.uid=unit.id;
+    lbl.addEventListener('dragstart',e=>{ dragUnitId=unit.id; lbl.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+    lbl.addEventListener('dragend',()=>{ lbl.classList.remove('dragging','drag-over'); dragUnitId=null; document.querySelectorAll('.cal-unit-label').forEach(l=>l.classList.remove('drag-over')); });
+    lbl.addEventListener('dragover',e=>{ e.preventDefault(); if(dragUnitId&&unit.id!==dragUnitId){ document.querySelectorAll('.cal-unit-label').forEach(l=>l.classList.remove('drag-over')); lbl.classList.add('drag-over'); }});
+    lbl.addEventListener('drop',async e=>{
+      e.preventDefault();
+      document.querySelectorAll('.cal-unit-label').forEach(l=>l.classList.remove('drag-over'));
+      if(!dragUnitId||dragUnitId===unit.id) return;
+      const active=DB.getUnits().filter(u=>u.active);
+      const fromIdx=active.findIndex(u=>u.id===dragUnitId);
+      const toIdx=active.findIndex(u=>u.id===unit.id);
+      if(fromIdx===-1||toIdx===-1) return;
+      const reordered=[...active];
+      const [moved]=reordered.splice(fromIdx,1);
+      reordered.splice(toIdx,0,moved);
+      const toSave=[];
+      reordered.forEach((u,i)=>{ if(u.sortOrder!==i){u.sortOrder=i;toSave.push(u);} });
+      renderCalendar(); // optimistic re-render
+      await Promise.all(toSave.map(u=>DB.saveUnit(u)));
+    });
     grid.appendChild(lbl);
 
     const row=document.createElement('div'); row.className='cal-days-row'; row.style.position='relative';
@@ -655,6 +680,9 @@ function getCheckIn(){ const d=document.getElementById('f-checkInDate').value, t
 function getCheckOut(){ const d=document.getElementById('f-checkOutDate').value, t=document.getElementById('f-checkOutTime').value||'11:00'; return d?`${d}T${t}:00`:null; }
 
 function buildBookingFromForm(){
+  const existing = editingBookingId ? DB.getBookings().find(b=>b.id===editingBookingId) : null;
+  // paidAt: set to today when first marked paid, preserved on re-saves, cleared if set back to unpaid
+  const paidAt = selectedPayment==='paid' ? (existing?.paidAt || toDateStr(new Date())) : null;
   return {
     id:editingBookingId||uuid(), guestName:document.getElementById('f-guestName').value.trim(),
     phone:document.getElementById('f-phone').value.trim(), accommodations:[...selectedUnits],
@@ -662,7 +690,7 @@ function buildBookingFromForm(){
     extras:getExtrasFromForm(), baseAmount:0,
     discountAmount:parseFloat(document.getElementById('f-discount').value)||0,
     finalAmount:parseFloat(document.getElementById('f-finalAmount').value)||0,
-    paymentStatus:selectedPayment, status:selectedStatus,
+    paymentStatus:selectedPayment, status:selectedStatus, paidAt,
     source:document.getElementById('f-source').value.trim(),
     tags:[...selectedTags],
     overrideConflict:document.getElementById('overrideConflict').checked,
