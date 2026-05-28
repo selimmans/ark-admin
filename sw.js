@@ -1,4 +1,4 @@
-const CACHE   = 'ark-os-v3'
+const CACHE   = 'ark-os-v4'
 const BASE_URL = 'https://selimmans.github.io/ark-admin'
 
 const SHELL = [
