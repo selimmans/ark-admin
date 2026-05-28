@@ -225,6 +225,7 @@
     <a class="nav-tab active" href="./index.html">Calendar</a>
     <a class="nav-tab" href="./cleaning.html">Cleaning</a>
     <a class="nav-tab" href="./tasks.html">Tasks</a>
+    <a class="nav-tab" href="./requests.html">Requests</a>
     <a class="nav-tab" href="./analytics.html">Analytics</a>
     <a class="nav-tab" href="./finance.html">Finance</a>
   </div>
@@ -315,7 +316,14 @@
     </div>
     <div class="modal-footer">
       <button class="btn danger" id="deleteBookingBtn" onclick="deleteCurrentBooking()" style="display:none">Delete</button>
-      <div class="modal-footer-right"><button class="btn" onclick="closeBookingModal()">Cancel</button><button class="btn primary" onclick="saveBooking()">Save Booking</button></div>
+      <div class="modal-footer-right">
+        <button class="btn" id="sharePortalBtn" onclick="sharePortalLink()" style="display:none;gap:6px;align-items:center">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Share Portal
+        </button>
+        <button class="btn" onclick="closeBookingModal()">Cancel</button>
+        <button class="btn primary" onclick="saveBooking()">Save Booking</button>
+      </div>
     </div>
   </div>
 </div>
@@ -572,6 +580,7 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
   editingBookingId=booking?booking.id:null;
   document.getElementById('bookingModalTitle').textContent=booking?'Edit Booking':'New Booking';
   document.getElementById('deleteBookingBtn').style.display=booking?'block':'none';
+  document.getElementById('sharePortalBtn').style.display=(booking?.accessToken)?'flex':'none';
   document.getElementById('conflictWarning').classList.remove('visible');
   document.getElementById('overrideConflict').checked=false;
 
@@ -724,6 +733,17 @@ async function saveBooking(){
     }
   }
   closeBookingModal(); renderCalendar(); renderSnapshot();
+}
+
+function sharePortalLink() {
+  const b = DB.getBookings().find(x => x.id === editingBookingId)
+  if (!b?.accessToken) return
+  const base = 'https://selimmans.github.io/ark-admin/guest.html'
+  const url  = `${base}?code=${b.accessToken}`
+  const ci   = b.checkIn  ? new Date(b.checkIn).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
+  const co   = b.checkOut ? new Date(b.checkOut).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
+  const msg  = `Your stay at ARK is confirmed! 🌿\n\nHere's your private guest portal — arrival info, local guide & requests, all in one place:\n\n${url}\n\n${ci} → ${co}\n\nSee you soon.`
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
 }
 
 async function deleteCurrentBooking(){

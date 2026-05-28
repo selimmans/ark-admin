@@ -1,5 +1,12 @@
 // ─── Field mappers: camelCase (app) ↔ snake_case (Supabase) ───────────────
 
+// ── Access token generator (unambiguous chars, 8 chars) ──
+function _generatePortalToken() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789'
+  return Array.from(crypto.getRandomValues(new Uint8Array(8)))
+    .map(b => chars[b % chars.length]).join('')
+}
+
 function bookingToRow(b) {
   return {
     id: b.id, guest_name: b.guestName, phone: b.phone,
@@ -9,6 +16,7 @@ function bookingToRow(b) {
     payment_status: b.paymentStatus, status: b.status, source: b.source,
     tags: b.tags, override_conflict: b.overrideConflict, notes: b.notes,
     paid_at: b.paidAt || null,
+    access_token: b.accessToken || null,
   }
 }
 function rowToBooking(r) {
@@ -20,6 +28,7 @@ function rowToBooking(r) {
     paymentStatus: r.payment_status, status: r.status, source: r.source,
     tags: r.tags || [], overrideConflict: r.override_conflict, notes: r.notes,
     paidAt: r.paid_at || null, createdAt: r.created_at,
+    accessToken: r.access_token || null,
   }
 }
 
@@ -201,6 +210,8 @@ window.DB = {
   // (optimistic) and queued for replay when connectivity returns.
 
   async saveBooking(b) {
+    // Ensure every booking has a portal access token
+    if (!b.accessToken) b.accessToken = _generatePortalToken()
     if (!navigator.onLine) {
       const idx = this._bookings.findIndex(x => x.id === b.id)
       if (idx >= 0) this._bookings[idx] = b; else this._bookings.unshift(b)

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ARK OS" />
+  <meta name="theme-color" content="#1C1A16" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <title>ARK OS — Requests</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./js/supabase.js"></script>
+  <script src="./js/db.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/notifications.js"></script>
+  <style>
+    :root {
+      --ink:#1C1A16; --ink-soft:#2C2A24; --ink-muted:#5A5248;
+      --cream:#F5F2EC; --sand:#EAE0CE; --border:#CEC3B0;
+      --earth:#B09070; --earth-dim:#8A7055;
+      --sea:#4A7A8A; --sea-dim:#3A6070; --sea-pale:rgba(74,122,138,0.09);
+      --positive:#4A7A4A; --positive-pale:rgba(74,122,74,0.09);
+      --negative:#8A4A4A; --negative-pale:rgba(138,74,74,0.09);
+      --amber:#A07030; --amber-pale:rgba(160,112,48,0.09);
+      --display:'Cinzel',Georgia,serif; --serif:'Cormorant Garamond',Georgia,serif; --sans:'Jost',-apple-system,sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:16px;} body{background:var(--cream);color:var(--ink);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+    .nav{position:sticky;top:0;z-index:100;background:rgba(245,242,236,0.96);backdrop-filter:blur(8px);border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;gap:16px;}
+    .nav-brand{font-family:var(--display);font-size:13px;font-weight:400;letter-spacing:5px;color:var(--ink);text-decoration:none;white-space:nowrap;}
+    .nav-brand span{font-family:var(--sans);font-size:8px;font-weight:300;letter-spacing:3px;color:var(--ink-muted);text-transform:uppercase;margin-left:8px;vertical-align:middle;}
+    .nav-tabs{display:flex;border:0.5px solid var(--border);overflow:hidden;}
+    .nav-tab{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2.5px;text-transform:uppercase;color:var(--ink-muted);text-decoration:none;padding:9px 16px;border-right:0.5px solid var(--border);transition:background 160ms ease,color 160ms ease;white-space:nowrap;}
+    .nav-tab:last-child{border-right:none;} .nav-tab:hover{background:var(--sand);color:var(--ink);} .nav-tab.active{background:var(--ink);color:var(--cream);}
+    .nav-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+
+    /* PAGE TABS */
+    .page-tabs{display:flex;border-bottom:0.5px solid var(--border);background:rgba(255,255,255,0.5);}
+    .page-tab{font-family:var(--sans);font-size:9px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);padding:14px 24px;cursor:pointer;border-bottom:2px solid transparent;transition:all 160ms ease;display:flex;align-items:center;gap:7px;}
+    .page-tab:hover{color:var(--ink);}
+    .page-tab.active{color:var(--ink);border-bottom-color:var(--ink);}
+    .page-tab .badge{background:var(--negative);color:#fff;font-size:7px;font-weight:500;letter-spacing:0;padding:2px 6px;border-radius:99px;min-width:18px;text-align:center;}
+
+    .page-section{display:none;padding:28px 32px;} .page-section.active{display:block;}
+
+    /* SECTION HEADER */
+    .section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap;}
+    .section-title{font-family:var(--display);font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;color:var(--ink);}
+    .filter-bar{display:flex;gap:0;border:0.5px solid var(--border);overflow:hidden;}
+    .filter-btn{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border-right:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 140ms ease;white-space:nowrap;}
+    .filter-btn:last-child{border-right:none;} .filter-btn.active{background:var(--ink);color:var(--cream);} .filter-btn:hover:not(.active){background:var(--sand);color:var(--ink);}
+
+    /* REQUEST CARDS */
+    .req-list{display:flex;flex-direction:column;gap:0;border:0.5px solid var(--border);}
+    .req-card{padding:18px 20px;border-bottom:0.5px solid var(--border);transition:background 120ms ease;}
+    .req-card:last-child{border-bottom:none;}
+    .req-card:hover{background:rgba(255,255,255,0.6);}
+    .req-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;}
+    .req-guest{font-family:var(--serif);font-size:17px;font-weight:400;color:var(--ink);line-height:1;}
+    .req-meta{font-family:var(--sans);font-size:9px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);margin-top:4px;}
+    .req-type-badge{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border:0.5px solid var(--border);color:var(--ink-muted);white-space:nowrap;flex-shrink:0;}
+    .req-type-badge.grocery{border-color:var(--sea);color:var(--sea-dim);background:var(--sea-pale);}
+    .req-type-badge.general{border-color:var(--earth);color:var(--earth-dim);background:rgba(176,144,112,0.09);}
+    .req-body{font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink-muted);line-height:1.6;margin-bottom:12px;}
+    .req-items{display:flex;flex-direction:column;gap:3px;margin-bottom:12px;}
+    .req-item-row{display:flex;justify-content:space-between;font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink-muted);}
+    .req-item-row strong{font-weight:400;color:var(--ink);}
+    .req-total{font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink);padding-top:8px;border-top:0.5px solid var(--border);display:flex;justify-content:space-between;}
+    .req-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .req-time{font-family:var(--sans);font-size:9px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);}
+    .req-actions{display:flex;gap:6px;}
+    .req-btn{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:6px 12px;border:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 140ms ease;}
+    .req-btn:hover{background:var(--sand);}
+    .req-btn.seen{border-color:var(--amber);color:var(--amber);background:var(--amber-pale);}
+    .req-btn.done{border-color:var(--positive);color:var(--positive);background:var(--positive-pale);}
+    .status-pill{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:1.5px;text-transform:uppercase;padding:3px 9px;border-radius:0;}
+    .status-pill.pending{border:0.5px solid var(--amber);color:var(--amber);background:var(--amber-pale);}
+    .status-pill.seen{border:0.5px solid var(--sea);color:var(--sea-dim);background:var(--sea-pale);}
+    .status-pill.done{border:0.5px solid var(--positive);color:var(--positive);background:var(--positive-pale);}
+    .req-empty{padding:48px 24px;text-align:center;font-family:var(--sans);font-size:11px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);}
+
+    /* GROCERY CATALOG */
+    .catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;border:0.5px solid var(--border);background:var(--border);margin-top:24px;}
+    .catalog-card{background:var(--cream);padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+    .catalog-card.inactive{opacity:0.45;}
+    .catalog-name{font-family:var(--serif);font-size:16px;font-weight:400;color:var(--ink);}
+    .catalog-cat{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
+    .catalog-prices{display:flex;gap:16px;align-items:baseline;}
+    .catalog-price-item{display:flex;flex-direction:column;gap:2px;}
+    .catalog-price-label{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
+    .catalog-price-val{font-family:var(--display);font-size:15px;font-weight:400;color:var(--ink);}
+    .catalog-margin{font-family:var(--sans);font-size:9px;font-weight:300;color:var(--positive);}
+    .catalog-unit{font-family:var(--sans);font-size:9px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);}
+    .catalog-actions{display:flex;gap:6px;margin-top:4px;}
+    .catalog-btn{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:6px 12px;border:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 140ms ease;}
+    .catalog-btn:hover{background:var(--sand);}
+    .catalog-btn.danger{border-color:var(--negative);color:var(--negative);}
+
+    /* ADD ITEM FORM */
+    .add-item-form{background:rgba(255,255,255,0.6);border:0.5px solid var(--border);padding:24px;margin-bottom:0;}
+    .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+    .form-group{display:flex;flex-direction:column;gap:5px;}
+    .form-group.full{grid-column:1/-1;}
+    .form-label{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
+    .form-input{font-family:var(--sans);font-size:13px;font-weight:300;color:var(--ink);background:var(--cream);border:0.5px solid var(--border);padding:9px 12px;outline:none;transition:border-color 160ms ease;width:100%;}
+    .form-input:focus{border-color:var(--sea);}
+    select.form-input{cursor:pointer;}
+    .btn{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:9px 18px;border:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 160ms ease;}
+    .btn:hover{background:var(--sand);color:var(--ink);}
+    .btn.primary{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+    .btn.primary:hover{background:var(--ink-soft);}
+    .btn.danger{border-color:var(--negative);color:var(--negative);}
+
+    /* EDIT MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(28,26,22,0.55);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 200ms ease;}
+    .modal-overlay.open{opacity:1;pointer-events:all;}
+    .modal{background:var(--cream);border:0.5px solid var(--border);width:90%;max-width:480px;display:flex;flex-direction:column;}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:0.5px solid var(--border);}
+    .modal-title{font-family:var(--display);font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;color:var(--ink);}
+    .modal-close{width:32px;height:32px;border:0.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink-muted);transition:all 160ms ease;}
+    .modal-close:hover{border-color:var(--negative);color:var(--negative);}
+    .modal-close svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+    .modal-body{padding:22px;}
+    .modal-footer{display:flex;align-items:center;justify-content:flex-end;padding:16px 22px;border-top:0.5px solid var(--border);gap:8px;}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-brand" href="./index.html">ARK <span>Operations System</span></a>
+  <div class="nav-tabs">
+    <a class="nav-tab" href="./index.html">Calendar</a>
+    <a class="nav-tab" href="./cleaning.html">Cleaning</a>
+    <a class="nav-tab" href="./tasks.html">Tasks</a>
+    <a class="nav-tab active" href="./requests.html">Requests</a>
+    <a class="nav-tab" href="./analytics.html">Analytics</a>
+    <a class="nav-tab" href="./finance.html">Finance</a>
+  </div>
+  <div class="nav-actions"></div>
+</nav>
+
+<div class="page-tabs">
+  <div class="page-tab active" id="tab-requests" onclick="switchTab('requests')">
+    Guest Requests <span class="badge" id="pendingBadge" style="display:none">0</span>
+  </div>
+  <div class="page-tab" id="tab-catalog" onclick="switchTab('catalog')">Grocery Catalog</div>
+</div>
+
+<!-- ── REQUESTS TAB ── -->
+<div class="page-section active" id="section-requests">
+  <div class="section-hd">
+    <div class="section-title">Guest Requests</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="filter-bar" id="statusFilter">
+        <button class="filter-btn active" data-val="all" onclick="setStatusFilter('all')">All</button>
+        <button class="filter-btn" data-val="pending" onclick="setStatusFilter('pending')">Pending</button>
+        <button class="filter-btn" data-val="seen" onclick="setStatusFilter('seen')">Seen</button>
+        <button class="filter-btn" data-val="done" onclick="setStatusFilter('done')">Done</button>
+      </div>
+      <div class="filter-bar" id="typeFilter">
+        <button class="filter-btn active" data-val="all" onclick="setTypeFilter('all')">All Types</button>
+        <button class="filter-btn" data-val="grocery" onclick="setTypeFilter('grocery')">Grocery</button>
+        <button class="filter-btn" data-val="general" onclick="setTypeFilter('general')">General</button>
+      </div>
+      <button class="btn" onclick="loadRequests()">↻ Refresh</button>
+    </div>
+  </div>
+  <div id="reqList"><div class="req-empty">Loading requests…</div></div>
+</div>
+
+<!-- ── CATALOG TAB ── -->
+<div class="page-section" id="section-catalog">
+  <div class="section-hd">
+    <div class="section-title">Grocery Catalog</div>
+  </div>
+
+  <!-- Add form -->
+  <div class="add-item-form">
+    <div style="font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);margin-bottom:16px;">Add Item</div>
+    <div class="form-grid-2" style="margin-bottom:14px;">
+      <div class="form-group full"><label class="form-label">Name</label><input class="form-input" type="text" id="ci-name" placeholder="e.g. Still Water 1.5L" /></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-input" id="ci-category">
+          <option value="drinks">Drinks</option>
+          <option value="food">Food</option>
+          <option value="dairy">Dairy</option>
+          <option value="pantry">Pantry</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Unit Label</label><input class="form-input" type="text" id="ci-unit" placeholder="per bottle, per kg…" /></div>
+      <div class="form-group"><label class="form-label">Cost (EGP)</label><input class="form-input" type="number" id="ci-cost" placeholder="0" min="0" /></div>
+      <div class="form-group"><label class="form-label">Price to Guest (EGP)</label><input class="form-input" type="number" id="ci-price" placeholder="0" min="0" /></div>
+    </div>
+    <button class="btn primary" onclick="addCatalogItem()">Add to Catalog</button>
+  </div>
+
+  <div id="catalogGrid" class="catalog-grid">
+    <div style="grid-column:1/-1;padding:32px;text-align:center;font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink-muted);">Loading catalog…</div>
+  </div>
+</div>
+
+<!-- ── EDIT ITEM MODAL ── -->
+<div class="modal-overlay" id="editItemOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Item</div>
+      <button class="modal-close" onclick="closeEditItem()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid-2">
+        <div class="form-group full"><label class="form-label">Name</label><input class="form-input" type="text" id="ei-name" /></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select class="form-input" id="ei-category">
+            <option value="drinks">Drinks</option>
+            <option value="food">Food</option>
+            <option value="dairy">Dairy</option>
+            <option value="pantry">Pantry</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Unit Label</label><input class="form-input" type="text" id="ei-unit" /></div>
+        <div class="form-group"><label class="form-label">Cost (EGP)</label><input class="form-input" type="number" id="ei-cost" min="0" /></div>
+        <div class="form-group"><label class="form-label">Price to Guest (EGP)</label><input class="form-input" type="number" id="ei-price" min="0" /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn danger" onclick="deleteCatalogItem()">Delete</button>
+      <button class="btn" onclick="closeEditItem()">Cancel</button>
+      <button class="btn primary" onclick="saveEditItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://fqpxbvpjugbqelivtyae.supabase.co'
+
+let _statusFilter = 'all', _typeFilter = 'all'
+let _allRequests  = []
+let _catalogItems = []
+let _editingItemId = null
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['requests','catalog'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab)
+    document.getElementById('section-'+t).classList.toggle('active', t===tab)
+  })
+  if (tab === 'catalog' && !_catalogItems.length) loadCatalog()
+}
+
+// ── Requests ─────────────────────────────────────────────────────────────────
+function setStatusFilter(v) {
+  _statusFilter = v
+  document.querySelectorAll('#statusFilter .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.val===v))
+  renderRequests()
+}
+function setTypeFilter(v) {
+  _typeFilter = v
+  document.querySelectorAll('#typeFilter .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.val===v))
+  renderRequests()
+}
+
+async function loadRequests() {
+  document.getElementById('reqList').innerHTML = '<div class="req-empty">Loading…</div>'
+  const { data, error } = await window._db
+    .from('guest_requests')
+    .select('*, bookings(guest_name, check_in, check_out, accommodations)')
+    .order('created_at', { ascending: false })
+
+  if (error) { document.getElementById('reqList').innerHTML = `<div class="req-empty">Error: ${error.message}</div>`; return }
+  _allRequests = data || []
+  renderRequests()
+  updatePendingBadge()
+}
+
+function updatePendingBadge() {
+  const n = _allRequests.filter(r => r.status === 'pending').length
+  const badge = document.getElementById('pendingBadge')
+  badge.textContent = n
+  badge.style.display = n > 0 ? 'inline-block' : 'none'
+}
+
+function renderRequests() {
+  const list = _allRequests.filter(r => {
+    if (_statusFilter !== 'all' && r.status !== _statusFilter) return false
+    if (_typeFilter   !== 'all' && r.type   !== _typeFilter)   return false
+    return true
+  })
+
+  if (!list.length) {
+    document.getElementById('reqList').innerHTML = '<div class="req-empty">No requests match this filter</div>'
+    return
+  }
+
+  const units = window.DB?.getUnits() || []
+
+  let html = '<div class="req-list">'
+  list.forEach(r => {
+    const b      = r.bookings || {}
+    const unitNames = (b.accommodations || []).map(id => (units.find(u => u.id === id) || {}).name || id).join(', ')
+    const ci     = b.check_in  ? new Date(b.check_in).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
+    const co     = b.check_out ? new Date(b.check_out).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
+    const time   = new Date(r.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+    const p      = r.payload || {}
+
+    let bodyHtml = ''
+    if (r.type === 'grocery' && p.items?.length) {
+      bodyHtml = `<div class="req-items">
+        ${p.items.map(i => `<div class="req-item-row"><span><strong>${i.name}</strong> × ${i.qty}</span><span>EGP ${i.subtotal}</span></div>`).join('')}
+        <div class="req-total"><span>Total</span><span>EGP ${p.total || 0}</span></div>
+        ${p.notes ? `<div style="font-size:10px;color:var(--ink-muted);margin-top:6px;font-style:italic">"${p.notes}"</div>` : ''}
+      </div>`
+    } else if (p.message) {
+      bodyHtml = `<div class="req-body">"${p.message}"</div>`
+    }
+
+    const statusButtons = r.status === 'pending'
+      ? `<button class="req-btn" onclick="updateRequestStatus('${r.id}','seen')">Mark Seen</button><button class="req-btn done" onclick="updateRequestStatus('${r.id}','done')">Mark Done</button>`
+      : r.status === 'seen'
+      ? `<button class="req-btn done" onclick="updateRequestStatus('${r.id}','done')">Mark Done</button>`
+      : `<span style="font-family:var(--sans);font-size:9px;color:var(--positive);letter-spacing:1px">Completed</span>`
+
+    html += `<div class="req-card" id="req-${r.id}">
+      <div class="req-card-header">
+        <div>
+          <div class="req-guest">${b.guest_name || '—'}</div>
+          <div class="req-meta">${unitNames}${unitNames&&ci?' · ':''}${ci} → ${co}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="status-pill ${r.status}">${r.status}</span>
+          <span class="req-type-badge ${r.type}">${r.type}</span>
+        </div>
+      </div>
+      ${bodyHtml}
+      <div class="req-footer">
+        <span class="req-time">${time}</span>
+        <div class="req-actions">${statusButtons}</div>
+      </div>
+    </div>`
+  })
+  html += '</div>'
+  document.getElementById('reqList').innerHTML = html
+}
+
+async function updateRequestStatus(id, status) {
+  const { error } = await window._db.from('guest_requests').update({ status }).eq('id', id)
+  if (error) { alert('Update failed: ' + error.message); return }
+  const req = _allRequests.find(r => r.id === id)
+  if (req) req.status = status
+  renderRequests()
+  updatePendingBadge()
+}
+
+// ── Catalog ───────────────────────────────────────────────────────────────────
+async function loadCatalog() {
+  const { data, error } = await window._db
+    .from('grocery_items')
+    .select('*')
+    .order('sort_order')
+  if (error) { console.error(error); return }
+  _catalogItems = data || []
+  renderCatalog()
+}
+
+function renderCatalog() {
+  if (!_catalogItems.length) {
+    document.getElementById('catalogGrid').innerHTML = '<div style="grid-column:1/-1;padding:32px;text-align:center;font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink-muted);">No items yet — add one above.</div>'
+    return
+  }
+  const CAT_LABELS = { drinks:'Drinks', food:'Food', dairy:'Dairy', pantry:'Pantry', other:'Other' }
+  let html = ''
+  _catalogItems.forEach(item => {
+    const margin = item.price_egp - item.cost_egp
+    const pct    = item.cost_egp > 0 ? Math.round((margin / item.cost_egp) * 100) : 0
+    html += `<div class="catalog-card${item.active ? '' : ' inactive'}">
+      <div>
+        <div class="catalog-name">${item.name}</div>
+        <div class="catalog-cat">${CAT_LABELS[item.category] || item.category} · ${item.unit_label}</div>
+      </div>
+      <div class="catalog-prices">
+        <div class="catalog-price-item">
+          <div class="catalog-price-label">Cost</div>
+          <div class="catalog-price-val">EGP ${item.cost_egp}</div>
+        </div>
+        <div class="catalog-price-item">
+          <div class="catalog-price-label">Price</div>
+          <div class="catalog-price-val">EGP ${item.price_egp}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="catalog-margin">+EGP ${margin} margin (${pct}%)</div>
+      </div>
+      <div class="catalog-actions">
+        <button class="catalog-btn" onclick="openEditItem('${item.id}')">Edit</button>
+        <button class="catalog-btn" onclick="toggleItemActive('${item.id}',${!item.active})">${item.active ? 'Deactivate' : 'Activate'}</button>
+      </div>
+    </div>`
+  })
+  document.getElementById('catalogGrid').innerHTML = html
+}
+
+async function addCatalogItem() {
+  const name = document.getElementById('ci-name').value.trim()
+  if (!name) { alert('Name is required.'); return }
+  const item = {
+    name,
+    category:  document.getElementById('ci-category').value,
+    unit_label: document.getElementById('ci-unit').value.trim() || 'per item',
+    cost_egp:  parseInt(document.getElementById('ci-cost').value)  || 0,
+    price_egp: parseInt(document.getElementById('ci-price').value) || 0,
+    active: true,
+    sort_order: _catalogItems.length * 10,
+  }
+  const { data, error } = await window._db.from('grocery_items').insert(item).select().single()
+  if (error) { alert('Save failed: ' + error.message); return }
+  _catalogItems.push(data)
+  renderCatalog()
+  ;['ci-name','ci-unit','ci-cost','ci-price'].forEach(id => document.getElementById(id).value = '')
+}
+
+function openEditItem(id) {
+  const item = _catalogItems.find(i => i.id === id)
+  if (!item) return
+  _editingItemId = id
+  document.getElementById('ei-name').value     = item.name
+  document.getElementById('ei-category').value = item.category
+  document.getElementById('ei-unit').value     = item.unit_label
+  document.getElementById('ei-cost').value     = item.cost_egp
+  document.getElementById('ei-price').value    = item.price_egp
+  document.getElementById('editItemOverlay').classList.add('open')
+}
+function closeEditItem() { document.getElementById('editItemOverlay').classList.remove('open'); _editingItemId = null }
+
+async function saveEditItem() {
+  if (!_editingItemId) return
+  const updates = {
+    name:       document.getElementById('ei-name').value.trim(),
+    category:   document.getElementById('ei-category').value,
+    unit_label: document.getElementById('ei-unit').value.trim(),
+    cost_egp:   parseInt(document.getElementById('ei-cost').value)  || 0,
+    price_egp:  parseInt(document.getElementById('ei-price').value) || 0,
+  }
+  const { data, error } = await window._db.from('grocery_items').update(updates).eq('id', _editingItemId).select().single()
+  if (error) { alert('Save failed: ' + error.message); return }
+  const idx = _catalogItems.findIndex(i => i.id === _editingItemId)
+  if (idx >= 0) _catalogItems[idx] = data
+  renderCatalog()
+  closeEditItem()
+}
+
+async function deleteCatalogItem() {
+  if (!_editingItemId || !confirm('Delete this item from the catalog?')) return
+  const { error } = await window._db.from('grocery_items').delete().eq('id', _editingItemId)
+  if (error) { alert('Delete failed: ' + error.message); return }
+  _catalogItems = _catalogItems.filter(i => i.id !== _editingItemId)
+  renderCatalog()
+  closeEditItem()
+}
+
+async function toggleItemActive(id, active) {
+  const { data, error } = await window._db.from('grocery_items').update({ active }).eq('id', id).select().single()
+  if (error) { alert('Update failed: ' + error.message); return }
+  const idx = _catalogItems.findIndex(i => i.id === id)
+  if (idx >= 0) _catalogItems[idx] = data
+  renderCatalog()
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditItem() })
+document.getElementById('editItemOverlay').addEventListener('click', function(e) { if (e.target === this) closeEditItem() })
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.onRoleReady = async function() {
+  await loadRequests()
+  await loadCatalog()
+
+  // Realtime: new guest requests push a notification + refresh list
+  window._db.channel('guest-requests-rt')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guest_requests' }, () => {
+      loadRequests()
+      if (typeof window.refreshBadge === 'function') window.refreshBadge()
+    })
+    .subscribe()
+}
+</script>
+<script>if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}</script>
+</body>
+</html>

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ARK Stay" />
+  <meta name="theme-color" content="#F5F2EC" />
+  <link rel="manifest" href="./manifest-guest.json" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <title>ARK — Your Stay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink:#1C1A16; --ink-soft:#2C2A24; --ink-muted:#5A5248;
+      --cream:#F5F2EC; --sand:#EAE0CE; --border:#CEC3B0;
+      --earth:#B09070; --earth-dim:#8A7055;
+      --sea:#4A7A8A; --sea-dim:#3A6070; --sea-pale:rgba(74,122,138,0.12);
+      --positive:#4A7A4A;
+      --display:'Cinzel',Georgia,serif;
+      --serif:'Cormorant Garamond',Georgia,serif;
+      --sans:'Jost',-apple-system,sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{min-height:100%;background:var(--cream);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+
+    /* ── LOADING / ERROR ── */
+    .gate{position:fixed;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:1000;}
+    .gate-logo{font-family:var(--display);font-size:18px;font-weight:400;letter-spacing:6px;color:var(--ink);}
+    .gate-sub{font-family:var(--sans);font-size:8px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:var(--ink-muted);}
+    .gate-msg{font-family:var(--sans);font-size:12px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);text-align:center;max-width:280px;line-height:1.7;}
+    .spinner{width:24px;height:24px;border:1.5px solid var(--border);border-top-color:var(--sea);border-radius:50%;animation:spin 0.8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── HEADER ── */
+    .g-header{padding:28px 24px 20px;border-bottom:0.5px solid var(--border);text-align:center;}
+    .g-logo{font-family:var(--display);font-size:16px;font-weight:400;letter-spacing:6px;color:var(--ink);}
+    .g-tagline{font-family:var(--sans);font-size:8px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:var(--ink-muted);margin-top:4px;}
+
+    /* ── SECTION NAV ── */
+    .g-nav{display:flex;border-bottom:0.5px solid var(--border);background:rgba(255,255,255,0.5);position:sticky;top:0;z-index:100;backdrop-filter:blur(8px);}
+    .g-nav-item{flex:1;font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);padding:14px 8px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;transition:all 160ms ease;}
+    .g-nav-item.active{color:var(--ink);border-bottom-color:var(--ink);}
+    .g-nav-item:hover:not(.active){color:var(--ink-soft);}
+    .g-section{display:none;} .g-section.active{display:block;}
+
+    /* ── WELCOME ── */
+    .welcome-card{margin:28px 24px;border:0.5px solid var(--border);padding:28px;}
+    .welcome-greeting{font-family:var(--serif);font-size:28px;font-weight:300;font-style:italic;color:var(--ink);line-height:1.2;margin-bottom:8px;}
+    .welcome-guest{font-family:var(--display);font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;color:var(--ink-muted);}
+    .welcome-divider{border:none;border-top:0.5px solid var(--border);margin:20px 0;}
+    .welcome-row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-bottom:0.5px solid var(--border);}
+    .welcome-row:last-of-type{border-bottom:none;}
+    .welcome-label{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
+    .welcome-val{font-family:var(--serif);font-size:17px;font-weight:400;color:var(--ink);}
+    .welcome-val.date{font-size:15px;}
+    .directions-btn{display:flex;align-items:center;gap:8px;margin:20px 0 0;padding:13px 20px;border:0.5px solid var(--border);background:transparent;color:var(--ink-muted);font-family:var(--sans);font-size:9px;font-weight:400;letter-spacing:2px;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:all 160ms ease;width:100%;justify-content:center;}
+    .directions-btn:hover{border-color:var(--sea);color:var(--sea-dim);background:var(--sea-pale);}
+    .directions-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+
+    /* unit info blocks */
+    .info-blocks{margin:0 24px 28px;display:flex;flex-direction:column;gap:0;border:0.5px solid var(--border);}
+    .info-block{padding:16px 20px;border-bottom:0.5px solid var(--border);}
+    .info-block:last-child{border-bottom:none;}
+    .info-block-label{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);margin-bottom:6px;}
+    .info-block-text{font-family:var(--sans);font-size:13px;font-weight:300;color:var(--ink);line-height:1.6;}
+
+    /* ── THE LAND ── */
+    .land-section{padding:0 0 40px;}
+    #guideMap{height:300px;z-index:1;border-bottom:0.5px solid var(--border);}
+    .land-filter-bar{display:flex;gap:0;border-bottom:0.5px solid var(--border);overflow-x:auto;}
+    .land-filter{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);padding:12px 20px;border-right:0.5px solid var(--border);cursor:pointer;transition:all 140ms ease;white-space:nowrap;flex-shrink:0;background:transparent;}
+    .land-filter:last-child{border-right:none;}
+    .land-filter.active{background:var(--ink);color:var(--cream);}
+    .land-filter:hover:not(.active){background:var(--sand);color:var(--ink);}
+    .guide-cards{display:flex;flex-direction:column;gap:0;}
+    .guide-card{padding:20px 24px;border-bottom:0.5px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+    .guide-card:last-child{border-bottom:none;}
+    .guide-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+    .guide-name{font-family:var(--serif);font-size:22px;font-weight:400;color:var(--ink);line-height:1.1;}
+    .guide-cat-badge{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border:0.5px solid var(--border);color:var(--ink-muted);flex-shrink:0;margin-top:4px;}
+    .guide-cat-badge.beach{border-color:var(--sea);color:var(--sea-dim);}
+    .guide-cat-badge.hike{border-color:var(--earth);color:var(--earth-dim);}
+    .guide-desc{font-family:var(--sans);font-size:12px;font-weight:300;color:var(--ink-muted);line-height:1.6;}
+    .guide-meta{display:flex;gap:16px;flex-wrap:wrap;}
+    .guide-meta-item{display:flex;flex-direction:column;gap:2px;}
+    .guide-meta-label{font-family:var(--sans);font-size:7px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);}
+    .guide-meta-val{font-family:var(--sans);font-size:11px;font-weight:400;color:var(--ink);}
+    .map-link{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:9px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--sea-dim);text-decoration:none;padding:8px 0;border-bottom:0.5px solid var(--sea);transition:color 160ms ease;align-self:flex-start;}
+    .map-link:hover{color:var(--sea);}
+    .map-link svg{width:11px;height:11px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+    .empty-land{padding:48px 24px;text-align:center;}
+    .empty-land-title{font-family:var(--serif);font-size:24px;font-weight:300;font-style:italic;color:var(--ink-muted);margin-bottom:8px;}
+    .empty-land-sub{font-family:var(--sans);font-size:10px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);}
+
+    /* restaurant cards (no map pin) */
+    .restaurant-list{display:flex;flex-direction:column;gap:0;}
+
+    /* ── REQUESTS ── */
+    .req-section{padding:24px;}
+    .req-section-title{font-family:var(--display);font-size:10px;font-weight:400;letter-spacing:3px;text-transform:uppercase;color:var(--ink);margin-bottom:18px;}
+
+    /* grocery */
+    .grocery-cat-filter{display:flex;gap:0;border:0.5px solid var(--border);overflow-x:auto;margin-bottom:20px;}
+    .gcat-btn{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:9px 16px;border-right:0.5px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all 140ms ease;white-space:nowrap;flex-shrink:0;}
+    .gcat-btn:last-child{border-right:none;}
+    .gcat-btn.active{background:var(--ink);color:var(--cream);}
+    .grocery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--border);border:0.5px solid var(--border);margin-bottom:20px;}
+    .grocery-item{background:var(--cream);padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px;transition:background 120ms ease;}
+    .grocery-item:hover{background:rgba(255,255,255,0.8);}
+    .gi-name{font-family:var(--serif);font-size:15px;font-weight:400;color:var(--ink);line-height:1.2;}
+    .gi-unit{font-family:var(--sans);font-size:8px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);}
+    .gi-price{font-family:var(--display);font-size:14px;font-weight:400;color:var(--ink);}
+    .gi-price span{font-family:var(--sans);font-size:9px;font-weight:300;color:var(--ink-muted);margin-left:3px;}
+    .qty-row{display:flex;align-items:center;gap:0;border:0.5px solid var(--border);align-self:flex-start;}
+    .qty-btn{width:28px;height:28px;border:none;background:transparent;font-family:var(--sans);font-size:16px;color:var(--ink-muted);cursor:pointer;transition:background 120ms ease;display:flex;align-items:center;justify-content:center;}
+    .qty-btn:hover{background:var(--sand);}
+    .qty-val{font-family:var(--sans);font-size:12px;font-weight:400;color:var(--ink);width:28px;text-align:center;border-left:0.5px solid var(--border);border-right:0.5px solid var(--border);}
+
+    /* cart */
+    .cart-summary{border:0.5px solid var(--border);padding:18px 20px;margin-bottom:16px;display:none;}
+    .cart-summary.visible{display:block;}
+    .cart-summary-title{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);margin-bottom:12px;}
+    .cart-items{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+    .cart-row{display:flex;justify-content:space-between;font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink-muted);}
+    .cart-row strong{font-weight:400;color:var(--ink);}
+    .cart-total{display:flex;justify-content:space-between;font-family:var(--display);font-size:15px;font-weight:400;color:var(--ink);padding-top:10px;border-top:0.5px solid var(--border);}
+    .cart-notes{margin-top:12px;}
+    .cart-notes textarea{width:100%;font-family:var(--sans);font-size:12px;font-weight:300;color:var(--ink);background:transparent;border:0.5px solid var(--border);padding:10px 12px;outline:none;resize:none;height:64px;transition:border-color 160ms ease;}
+    .cart-notes textarea:focus{border-color:var(--sea);}
+    .cart-notes label{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);display:block;margin-bottom:6px;}
+
+    /* submit btn */
+    .submit-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;background:var(--ink);color:var(--cream);font-family:var(--sans);font-size:9px;font-weight:400;letter-spacing:2.5px;text-transform:uppercase;border:none;cursor:pointer;transition:background 160ms ease;}
+    .submit-btn:hover{background:var(--ink-soft);}
+    .submit-btn:disabled{background:var(--border);color:var(--ink-muted);cursor:not-allowed;}
+
+    /* general request */
+    .general-req{margin-top:32px;padding-top:28px;border-top:0.5px solid var(--border);}
+    .general-req textarea{width:100%;font-family:var(--sans);font-size:13px;font-weight:300;color:var(--ink);background:transparent;border:0.5px solid var(--border);padding:12px 14px;outline:none;resize:none;height:100px;margin-bottom:12px;transition:border-color 160ms ease;}
+    .general-req textarea:focus{border-color:var(--sea);}
+
+    /* confirmation */
+    .confirm-screen{text-align:center;padding:48px 24px;}
+    .confirm-icon{font-size:32px;margin-bottom:16px;}
+    .confirm-title{font-family:var(--serif);font-size:26px;font-weight:300;font-style:italic;color:var(--ink);margin-bottom:8px;}
+    .confirm-sub{font-family:var(--sans);font-size:11px;font-weight:300;letter-spacing:1px;color:var(--ink-muted);}
+
+    /* Leaflet popup override */
+    .leaflet-popup-content-wrapper{border-radius:0;border:0.5px solid var(--border);box-shadow:none;font-family:var(--sans);}
+    .leaflet-popup-content{font-family:var(--sans);font-size:12px;font-weight:300;color:var(--ink);line-height:1.6;margin:12px 14px;}
+    .leaflet-popup-tip{display:none;}
+    .popup-name{font-family:var(--serif);font-size:16px;font-weight:400;color:var(--ink);margin-bottom:4px;}
+    .popup-dist{font-size:10px;color:var(--ink-muted);margin-bottom:8px;}
+    .popup-link{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--sea-dim);text-decoration:none;border-bottom:0.5px solid var(--sea-dim);padding-bottom:1px;}
+  </style>
+</head>
+<body>
+
+<!-- Loading gate -->
+<div class="gate" id="gate">
+  <div class="gate-logo">ARK</div>
+  <div class="gate-sub">Your Stay</div>
+  <div class="spinner" id="gateSpinner"></div>
+  <div class="gate-msg" id="gateMsg"></div>
+</div>
+
+<!-- Main portal (hidden until auth) -->
+<div id="portal" style="display:none">
+  <div class="g-header">
+    <div class="g-logo">ARK</div>
+    <div class="g-tagline">Your Private Stay</div>
+  </div>
+
+  <nav class="g-nav">
+    <div class="g-nav-item active" onclick="showSection('welcome')">Welcome</div>
+    <div class="g-nav-item" onclick="showSection('land')">The Land</div>
+    <div class="g-nav-item" onclick="showSection('requests')">Requests</div>
+  </nav>
+
+  <!-- ── WELCOME ── -->
+  <div class="g-section active" id="sec-welcome">
+    <div class="welcome-card">
+      <div class="welcome-greeting" id="w-greeting">Welcome</div>
+      <div class="welcome-guest" id="w-guest"></div>
+      <hr class="welcome-divider" />
+      <div class="welcome-row"><span class="welcome-label">Unit</span><span class="welcome-val" id="w-unit"></span></div>
+      <div class="welcome-row"><span class="welcome-label">Check-in</span><span class="welcome-val date" id="w-checkin"></span></div>
+      <div class="welcome-row"><span class="welcome-label">Check-out</span><span class="welcome-val date" id="w-checkout"></span></div>
+      <a class="directions-btn" id="w-directions" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        Directions to ARK
+      </a>
+    </div>
+
+    <div class="info-blocks" id="infoBlocks" style="display:none">
+      <!-- populated by JS if unit_info exists -->
+    </div>
+  </div>
+
+  <!-- ── THE LAND ── -->
+  <div class="g-section" id="sec-land">
+    <div class="land-section">
+      <div id="guideMap"></div>
+      <div class="land-filter-bar">
+        <div class="land-filter active" onclick="filterGuide('all')">All</div>
+        <div class="land-filter" onclick="filterGuide('beach')">Beaches</div>
+        <div class="land-filter" onclick="filterGuide('hike')">Hikes</div>
+        <div class="land-filter" onclick="filterGuide('restaurant')">Restaurants</div>
+      </div>
+      <div id="guideCards" class="guide-cards"></div>
+    </div>
+  </div>
+
+  <!-- ── REQUESTS ── -->
+  <div class="g-section" id="sec-requests">
+    <div class="req-section">
+
+      <!-- Grocery -->
+      <div class="req-section-title">Grocery Order</div>
+      <div class="grocery-cat-filter" id="groceryCatFilter"></div>
+      <div class="grocery-grid" id="groceryGrid"></div>
+      <div class="cart-summary" id="cartSummary">
+        <div class="cart-summary-title">Your Order</div>
+        <div class="cart-items" id="cartItems"></div>
+        <div class="cart-total"><span>Total</span><span id="cartTotal">EGP 0</span></div>
+        <div class="cart-notes">
+          <label>Notes (optional)</label>
+          <textarea id="groceryNotes" placeholder="Any preferences or timing requests…"></textarea>
+        </div>
+      </div>
+      <button class="submit-btn" id="grocerySubmitBtn" onclick="submitGrocery()" disabled>
+        <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Place Grocery Order
+      </button>
+
+      <!-- General request -->
+      <div class="general-req">
+        <div class="req-section-title">Message Us</div>
+        <textarea id="generalMsg" placeholder="Extra towels, a question, anything at all — we're here."></textarea>
+        <button class="submit-btn" onclick="submitGeneral()">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Send Message
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Supabase client (anon — no auth session for guests) ───────────────────────
+const _gdb = window.supabase.createClient(
+  'https://fqpxbvpjugbqelivtyae.supabase.co',
+  'sb_publishable_i7AYnNWMo1tBnqGZ7og8EA_FJK9nqFU',
+  { auth: { persistSession: false } }
+)
+
+const PORTAL_FN = 'https://fqpxbvpjugbqelivtyae.supabase.co/functions/v1/portal-auth'
+const ARK_LAT   = 31.4395183, ARK_LNG = 26.9565565
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let _booking    = null
+let _guideItems = []
+let _groceryItems = []
+let _cart       = {}       // { id: qty }
+let _guideFilter = 'all'
+let _groceryCatFilter = 'all'
+let _map        = null
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+;(async () => {
+  const code = new URLSearchParams(location.search).get('code')
+  if (!code) return showError('This link is invalid.', 'No access code found in the URL.')
+
+  setGateMsg('Loading your stay…')
+
+  try {
+    const res  = await fetch(PORTAL_FN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: code }),
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      if (data.error === 'not_yet')  return showError('Not quite yet.', `Your stay begins on ${fmtDate(data.checkIn)}. This link will activate the day before.`)
+      if (data.error === 'expired')  return showError('Your stay has ended.', `We hope you had a wonderful time. Check-out was ${fmtDate(data.checkOut)}.`)
+      if (data.error === 'invalid_token') return showError('Link not found.', 'This link may be invalid or has expired. Please contact ARK.')
+      return showError('Something went wrong.', 'Please try again or contact ARK directly.')
+    }
+
+    _booking = data.booking
+    renderWelcome(data)
+    await Promise.all([loadGuide(), loadGrocery()])
+    revealPortal()
+
+  } catch(e) {
+    showError('Could not connect.', 'Please check your connection and try again.')
+  }
+})()
+
+function showError(title, msg) {
+  document.getElementById('gateSpinner').style.display = 'none'
+  document.getElementById('gateMsg').innerHTML = `<strong style="font-family:var(--serif);font-size:20px;font-weight:400;color:var(--ink);display:block;margin-bottom:8px">${title}</strong>${msg}`
+}
+function setGateMsg(msg) { document.getElementById('gateMsg').textContent = msg }
+function revealPortal() {
+  document.getElementById('gate').style.display    = 'none'
+  document.getElementById('portal').style.display  = 'block'
+}
+
+// ── Welcome ────────────────────────────────────────────────────────────────────
+function renderWelcome({ booking, units, unitInfo }) {
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const firstName = (booking.guestName || '').split(' ')[0]
+  document.getElementById('w-greeting').textContent = greeting + (firstName ? `, ${firstName}` : '') + '.'
+  document.getElementById('w-guest').textContent    = booking.guestName || ''
+  document.getElementById('w-unit').textContent     = (units || []).map(u => u.name).join(', ') || '—'
+  document.getElementById('w-checkin').textContent  = fmtDate(booking.checkIn)
+  document.getElementById('w-checkout').textContent = fmtDate(booking.checkOut)
+
+  if (unitInfo?.directions_url) {
+    document.getElementById('w-directions').href = unitInfo.directions_url
+  } else {
+    document.getElementById('w-directions').href = `https://maps.google.com/?q=${ARK_LAT},${ARK_LNG}`
+  }
+
+  // Optional info blocks
+  const blocks = []
+  if (unitInfo?.checkin_notes)  blocks.push({ label: 'Check-in',     text: unitInfo.checkin_notes })
+  if (unitInfo?.checkout_notes) blocks.push({ label: 'Check-out',    text: unitInfo.checkout_notes })
+  if (unitInfo?.directions_text) blocks.push({ label: 'Getting here', text: unitInfo.directions_text })
+
+  if (blocks.length) {
+    const el = document.getElementById('infoBlocks')
+    el.style.display = 'flex'
+    el.innerHTML = blocks.map(b => `
+      <div class="info-block">
+        <div class="info-block-label">${b.label}</div>
+        <div class="info-block-text">${b.text}</div>
+      </div>`).join('')
+  }
+}
+
+// ── Guide / Map ────────────────────────────────────────────────────────────────
+async function loadGuide() {
+  const { data } = await _gdb.from('guide_items').select('*').eq('active', true).order('sort_order')
+  _guideItems = data || []
+}
+
+function initMap() {
+  if (_map) return
+  _map = L.map('guideMap', { zoomControl: true, scrollWheelZoom: false }).setView([ARK_LAT, ARK_LNG], 11)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 18,
+  }).addTo(_map)
+
+  // ARK marker
+  const arkIcon = L.divIcon({
+    html: `<div style="width:10px;height:10px;background:var(--ink);border-radius:50%;border:2px solid var(--cream);box-shadow:0 0 0 1px var(--ink)"></div>`,
+    className: '', iconAnchor: [5,5],
+  })
+  L.marker([ARK_LAT, ARK_LNG], { icon: arkIcon })
+    .addTo(_map)
+    .bindPopup('<div class="popup-name">ARK</div><div class="popup-dist">You are staying here</div>')
+
+  // Guide pins
+  _guideItems.filter(i => i.lat && i.lng && i.category !== 'restaurant').forEach(item => {
+    const color = item.category === 'beach' ? '#4A7A8A' : '#8A7055'
+    const icon  = L.divIcon({
+      html: `<div style="width:9px;height:9px;background:${color};border-radius:50%;border:2px solid #F5F2EC;box-shadow:0 0 0 1px ${color}"></div>`,
+      className: '', iconAnchor: [4,4],
+    })
+    L.marker([item.lat, item.lng], { icon })
+      .addTo(_map)
+      .bindPopup(`<div class="popup-name">${item.name}</div><div class="popup-dist">${item.distance || ''}</div>${item.maps_url ? `<a class="popup-link" href="${item.maps_url}" target="_blank">Open in Maps</a>` : ''}`)
+  })
+}
+
+function filterGuide(cat) {
+  _guideFilter = cat
+  document.querySelectorAll('.land-filter').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().includes(cat === 'all' ? 'all' : cat)))
+  renderGuideCards()
+}
+
+function renderGuideCards() {
+  const items = _guideFilter === 'all'
+    ? _guideItems
+    : _guideItems.filter(i => i.category === _guideFilter)
+
+  if (!items.length) {
+    document.getElementById('guideCards').innerHTML = `
+      <div class="empty-land">
+        <div class="empty-land-title">Coming soon</div>
+        <div class="empty-land-sub">We're curating your field guide to this coast.</div>
+      </div>`
+    return
+  }
+
+  const CAT_LABEL = { beach: 'Beach', hike: 'Hike', restaurant: 'Restaurant' }
+  document.getElementById('guideCards').innerHTML = items.map(item => `
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-name">${item.name}</div>
+        <span class="guide-cat-badge ${item.category}">${CAT_LABEL[item.category] || item.category}</span>
+      </div>
+      ${item.description ? `<div class="guide-desc">${item.description}</div>` : ''}
+      <div class="guide-meta">
+        ${item.distance ? `<div class="guide-meta-item"><div class="guide-meta-label">Distance</div><div class="guide-meta-val">${item.distance}</div></div>` : ''}
+        ${item.duration ? `<div class="guide-meta-item"><div class="guide-meta-label">Duration</div><div class="guide-meta-val">${item.duration}</div></div>` : ''}
+        ${item.difficulty ? `<div class="guide-meta-item"><div class="guide-meta-label">Difficulty</div><div class="guide-meta-val">${item.difficulty}</div></div>` : ''}
+        ${item.best_time ? `<div class="guide-meta-item"><div class="guide-meta-label">Best time</div><div class="guide-meta-val">${item.best_time}</div></div>` : ''}
+      </div>
+      ${item.maps_url ? `<a class="map-link" href="${item.maps_url}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Open in Maps</a>` : ''}
+    </div>`).join('')
+}
+
+// ── Grocery ────────────────────────────────────────────────────────────────────
+async function loadGrocery() {
+  const { data } = await _gdb.from('grocery_items').select('*').eq('active', true).order('sort_order')
+  _groceryItems = data || []
+}
+
+function renderGrocery() {
+  // Category filter
+  const cats = [...new Set(_groceryItems.map(i => i.category))]
+  const CAT_LABEL = { drinks:'Drinks', food:'Food', dairy:'Dairy', pantry:'Pantry', other:'Other' }
+  document.getElementById('groceryCatFilter').innerHTML =
+    [{ val: 'all', label: 'All' }, ...cats.map(c => ({ val: c, label: CAT_LABEL[c] || c }))]
+    .map(c => `<div class="gcat-btn${_groceryCatFilter===c.val?' active':''}" onclick="setGroceryCat('${c.val}')">${c.label}</div>`).join('')
+
+  const items = _groceryCatFilter === 'all' ? _groceryItems : _groceryItems.filter(i => i.category === _groceryCatFilter)
+  document.getElementById('groceryGrid').innerHTML = items.map(item => {
+    const qty = _cart[item.id] || 0
+    return `<div class="grocery-item">
+      <div>
+        <div class="gi-name">${item.name}</div>
+        <div class="gi-unit">${item.unit_label}</div>
+      </div>
+      <div class="gi-price">EGP ${item.price_egp}<span>each</span></div>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="changeQty('${item.id}',-1)">−</button>
+        <div class="qty-val">${qty}</div>
+        <button class="qty-btn" onclick="changeQty('${item.id}',1)">+</button>
+      </div>
+    </div>`
+  }).join('')
+  renderCart()
+}
+
+function setGroceryCat(cat) {
+  _groceryCatFilter = cat
+  renderGrocery()
+}
+
+function changeQty(id, delta) {
+  const item = _groceryItems.find(i => i.id === id)
+  if (!item) return
+  const cur = _cart[id] || 0
+  const next = Math.max(0, cur + delta)
+  if (next === 0) delete _cart[id]; else _cart[id] = next
+  renderGrocery()
+}
+
+function renderCart() {
+  const cartItems = Object.entries(_cart)
+    .map(([id, qty]) => {
+      const item = _groceryItems.find(i => i.id === id)
+      return item ? { ...item, qty, subtotal: item.price_egp * qty } : null
+    }).filter(Boolean)
+
+  const total    = cartItems.reduce((s, i) => s + i.subtotal, 0)
+  const hasItems = cartItems.length > 0
+
+  document.getElementById('cartSummary').classList.toggle('visible', hasItems)
+  document.getElementById('grocerySubmitBtn').disabled = !hasItems
+
+  if (hasItems) {
+    document.getElementById('cartItems').innerHTML = cartItems
+      .map(i => `<div class="cart-row"><span><strong>${i.name}</strong> × ${i.qty}</span><span>EGP ${i.subtotal}</span></div>`).join('')
+    document.getElementById('cartTotal').textContent = `EGP ${total}`
+  }
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────────
+async function submitGrocery() {
+  if (!_booking) return
+  const btn = document.getElementById('grocerySubmitBtn')
+  btn.disabled = true; btn.textContent = 'Sending…'
+
+  const cartItems = Object.entries(_cart).map(([id, qty]) => {
+    const item = _groceryItems.find(i => i.id === id)
+    return item ? { id, name: item.name, qty, price: item.price_egp, subtotal: item.price_egp * qty } : null
+  }).filter(Boolean)
+
+  const total = cartItems.reduce((s, i) => s + i.subtotal, 0)
+  const notes = document.getElementById('groceryNotes').value.trim()
+
+  const { error } = await _gdb.from('guest_requests').insert({
+    booking_id: _booking.id,
+    type: 'grocery',
+    payload: { items: cartItems, total, notes },
+    status: 'pending',
+  })
+
+  if (error) {
+    btn.disabled = false; btn.innerHTML = 'Place Grocery Order'
+    alert('Could not send your order. Please try again.')
+    return
+  }
+
+  _cart = {}
+  showConfirm('Order received.', 'We\'ll get your groceries sorted and let you know when they\'re ready.')
+}
+
+async function submitGeneral() {
+  if (!_booking) return
+  const msg = document.getElementById('generalMsg').value.trim()
+  if (!msg) return
+
+  const { error } = await _gdb.from('guest_requests').insert({
+    booking_id: _booking.id,
+    type: 'general',
+    payload: { message: msg },
+    status: 'pending',
+  })
+
+  if (error) { alert('Could not send your message. Please try again.'); return }
+  document.getElementById('generalMsg').value = ''
+  showConfirm('Message sent.', 'We\'ll get back to you shortly.')
+}
+
+function showConfirm(title, sub) {
+  const el = document.getElementById('sec-requests')
+  const prev = el.querySelector('.confirm-screen')
+  if (prev) prev.remove()
+  const div = document.createElement('div')
+  div.className = 'confirm-screen'
+  div.innerHTML = `<div class="confirm-icon">✓</div><div class="confirm-title">${title}</div><div class="confirm-sub">${sub}</div>`
+  el.insertBefore(div, el.firstChild)
+  div.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  setTimeout(() => div.remove(), 5000)
+}
+
+// ── Section nav ────────────────────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.g-section').forEach(s => s.classList.remove('active'))
+  document.querySelectorAll('.g-nav-item').forEach(i => i.classList.remove('active'))
+  document.getElementById('sec-'+name).classList.add('active')
+  document.querySelectorAll('.g-nav-item')[['welcome','land','requests'].indexOf(name)].classList.add('active')
+
+  if (name === 'land') {
+    renderGuideCards()
+    setTimeout(() => { initMap(); _map?.invalidateSize() }, 100)
+  }
+  if (name === 'requests' && _groceryItems.length) renderGrocery()
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+}
+</script>
+</body>
+</html>

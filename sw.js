@@ -1,4 +1,4 @@
-const CACHE   = 'ark-os-v2'
+const CACHE   = 'ark-os-v3'
 const BASE_URL = 'https://selimmans.github.io/ark-admin'
 
 const SHELL = [
@@ -6,9 +6,11 @@ const SHELL = [
   './index.html',
   './cleaning.html',
   './tasks.html',
+  './requests.html',
   './finance.html',
   './analytics.html',
   './auth.html',
+  './guest.html',
   './js/supabase.js',
   './js/db.js',
   './js/auth.js',
@@ -17,6 +19,8 @@ const SHELL = [
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap',
 ]
 
