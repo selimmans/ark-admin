@@ -341,7 +341,7 @@
     <div class="summary-card">
       <div class="card-label">Outstanding</div>
       <div class="card-value warning" id="c-outstanding">EGP 0</div>
-      <div class="card-sub" id="c-outstandingSub">Unpaid confirmed</div>
+      <div class="card-sub" id="c-outstandingSub">Upcoming, unpaid</div>
     </div>
     <div class="summary-card">
       <div class="card-label">Extras This Month</div>
@@ -541,8 +541,9 @@ function getNext30Revenue() {
 }
 
 function getOutstanding() {
+  const today = new Date().toISOString().split('T')[0]
   return DB.getBookings()
-    .filter(b => b.status === 'confirmed' && b.paymentStatus === 'unpaid')
+    .filter(b => b.status === 'confirmed' && b.paymentStatus === 'unpaid' && (b.checkOut || '') >= today)
     .reduce((s, b) => s + (b.finalAmount || 0), 0);
 }
 
