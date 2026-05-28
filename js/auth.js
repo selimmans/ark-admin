@@ -93,6 +93,9 @@ const _PROFILE_CACHE = 'ark_profile_v1'
 
   // Set up push notifications (non-blocking)
   if (typeof window.setupNotifications === 'function') window.setupNotifications()
+
+  // Clear the icon badge when the app is opened — user has "seen" it
+  if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(() => {})
 })()
 
 function signOut() {

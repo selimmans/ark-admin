@@ -49,7 +49,39 @@ window.setupNotifications = async function() {
 
   // Show an in-app briefing for today
   _notifyToday()
+
+  // Update the app icon badge with today's action count
+  _updateBadge()
 }
+
+// ── App icon badge (red number) ───────────────────────────────────────────────
+// Shows the total count of today's actionable items on the home screen icon.
+// Supported on Android Chrome, desktop Chrome/Edge. Clears on app open.
+function _updateBadge() {
+  if (!('setAppBadge' in navigator)) return
+
+  const today    = new Date().toISOString().split('T')[0]
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  const bookings = (window.DB?.getBookings() || []).filter(b => b.status !== 'cancelled')
+
+  const arrivals   = bookings.filter(b => (b.checkIn  || '').startsWith(today)).length
+  const departures = bookings.filter(b => (b.checkOut || '').startsWith(today)).length
+  const cleaning   = (window.DB?.getCleaning() || []).filter(c => c.date === today && c.status === 'pending').length
+  const unpaidSoon = bookings.filter(b =>
+    b.status === 'confirmed' && b.paymentStatus === 'unpaid' &&
+    b.checkIn >= today && b.checkIn <= tomorrow
+  ).length
+
+  const total = arrivals + departures + cleaning + unpaidSoon
+  if (total > 0) {
+    navigator.setAppBadge(total).catch(() => {})
+  } else {
+    navigator.clearAppBadge().catch(() => {})
+  }
+}
+
+// Call when data changes so badge stays current (e.g. after completing a cleaning task)
+window.refreshBadge = _updateBadge
 
 function _notifyToday() {
   if (Notification.permission !== 'granted') return

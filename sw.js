@@ -68,16 +68,22 @@ self.addEventListener('push', e => {
   let data = { title: 'ARK OS', body: 'New update', icon: './icons/icon-192.png' }
   try { data = { ...data, ...e.data.json() } } catch(_) {}
 
-  e.waitUntil(
+  const tasks = [
     self.registration.showNotification(data.title, {
-      body:    data.body,
-      icon:    data.icon  || './icons/icon-192.png',
-      badge:   './icons/icon-192.png',
-      tag:     'ark-daily',
+      body:     data.body,
+      icon:     data.icon || './icons/icon-192.png',
+      badge:    './icons/icon-192.png',
+      tag:      'ark-daily',
       renotify: false,
-      data:    { url: data.url || BASE_URL + '/index.html' },
-    })
-  )
+      data:     { url: data.url || BASE_URL + '/index.html', count: data.count || 1 },
+    }),
+    // Set badge number if the push includes a count
+    data.count
+      ? self.registration.badge?.set(data.count).catch(() => {}) ?? Promise.resolve()
+      : (navigator.setAppBadge ? navigator.setAppBadge(1).catch(() => {}) : Promise.resolve()),
+  ]
+
+  e.waitUntil(Promise.all(tasks))
 })
 
 // ── Notification click: focus/open the app ──
