@@ -314,6 +314,7 @@
         <div class="form-divider"></div>
         <div class="form-section-label">Status</div>
         <div class="form-group"><label class="form-label">Payment</label><div class="payment-toggle"><div class="payment-option unpaid active" id="payUnpaid" onclick="setPayment('unpaid')">Unpaid</div><div class="payment-option paid" id="payPaid" onclick="setPayment('paid')">Paid</div></div></div>
+        <div class="form-group" id="paidAtGroup" style="display:none"><label class="form-label">Date Paid</label><input class="form-input" type="date" id="f-paidAt" /></div>
         <div class="form-group"><label class="form-label">Booking Status</label><div class="status-chips"><div class="status-chip active" data-status="pending" onclick="setStatus('pending')">Pending</div><div class="status-chip confirmed" data-status="confirmed" onclick="setStatus('confirmed')">Confirmed</div><div class="status-chip cancelled" data-status="cancelled" onclick="setStatus('cancelled')">Cancelled</div><div class="status-chip blocked" data-status="blocked" onclick="setStatus('blocked')">Blocked</div></div></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f-notes" placeholder="Any notes…"></textarea></div>
       </div>
@@ -602,6 +603,8 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
     selectedUnits=new Set(booking.accommodations||[]);
     selectedStatus=booking.status||'pending'; selectedPayment=booking.paymentStatus||'unpaid';
     guestCount=booking.groupSize||2; selectedTags=new Set(booking.tags||[]);
+    document.getElementById('f-paidAt').value=booking.paidAt||'';
+    document.getElementById('paidAtGroup').style.display=selectedPayment==='paid'?'':'none';
     renderExtrasList(booking.extras||[]);
   } else {
     ['f-guestName','f-phone','f-source','f-notes'].forEach(id=>document.getElementById(id).value='');
@@ -610,6 +613,8 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
     document.getElementById('f-checkOutDate').value=''; document.getElementById('f-checkOutTime').value='11:00';
     selectedUnits=preUnit?new Set([preUnit]):new Set();
     selectedStatus='pending'; selectedPayment='unpaid'; guestCount=2; selectedTags=new Set();
+    document.getElementById('f-paidAt').value='';
+    document.getElementById('paidAtGroup').style.display='none';
     renderExtrasList([]);
   }
   renderUnitChips(); renderStatusChips(); renderPaymentToggle(); renderGuestCount(); renderTagChips(); updatePricing(); refreshExtrasSuggestions();
@@ -653,7 +658,13 @@ function addCustomTag(){
 function renderStatusChips(){ document.querySelectorAll('.status-chip').forEach(c=>c.classList.toggle('active',c.dataset.status===selectedStatus)); }
 function setStatus(s){ selectedStatus=s; renderStatusChips(); }
 function renderPaymentToggle(){ document.getElementById('payUnpaid').classList.toggle('active',selectedPayment==='unpaid'); document.getElementById('payPaid').classList.toggle('active',selectedPayment==='paid'); }
-function setPayment(s){ selectedPayment=s; renderPaymentToggle(); }
+function setPayment(s){
+  selectedPayment=s; renderPaymentToggle();
+  const group=document.getElementById('paidAtGroup');
+  const field=document.getElementById('f-paidAt');
+  group.style.display=s==='paid'?'':'none';
+  if(s==='paid'&&!field.value) field.value=toDateStr(new Date());
+}
 function renderGuestCount(){ document.getElementById('f-groupSize').textContent=guestCount; }
 function changeGuests(d){ guestCount=Math.max(1,Math.min(50,guestCount+d)); renderGuestCount(); }
 function onDatesChange(){ updatePricing(); checkConflict(); }
@@ -724,8 +735,9 @@ function getCheckOut(){ const d=document.getElementById('f-checkOutDate').value,
 
 function buildBookingFromForm(){
   const existing = editingBookingId ? DB.getBookings().find(b=>b.id===editingBookingId) : null;
-  // paidAt: set to today when first marked paid, preserved on re-saves, cleared if set back to unpaid
-  const paidAt = selectedPayment==='paid' ? (existing?.paidAt || toDateStr(new Date())) : null;
+  // paidAt: use the date field value; default to today only if paid and field is blank
+  const paidAtField = document.getElementById('f-paidAt').value;
+  const paidAt = selectedPayment==='paid' ? (paidAtField || toDateStr(new Date())) : null;
   return {
     id:editingBookingId||uuid(), guestName:document.getElementById('f-guestName').value.trim(),
     accessToken: existing?.accessToken || null,  // preserve existing token — db.js generates if missing
