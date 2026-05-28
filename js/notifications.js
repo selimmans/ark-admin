@@ -1,7 +1,7 @@
 // ─── ARK Push Notifications ───────────────────────────────────────────────
 // Handles permission, push subscription storage, and in-app daily briefing.
 
-const VAPID_PUBLIC_KEY = '3pxqUft7_oSP3DT7BTigYVO9ExufmczF9XEZRQwn02Op1dFkFBa1VBBQekYoLAUM4JWMF00Z1EYqfjHpYVdkrw'
+const VAPID_PUBLIC_KEY = 'BI6LmlqTRYBCu8UQ1dk7KpmHHT_i7wBqR_5LpOK-EjDoW7H_0-3enBLxVj-H1t1TQFms6ZTN2CX-zr_ZmSyoEo0'
 
 function _urlB64ToUint8(b64) {
   const pad = '='.repeat((4 - b64.length % 4) % 4)
