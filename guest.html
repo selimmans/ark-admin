@@ -509,11 +509,13 @@ async function submitGrocery() {
 
   if (error) {
     btn.disabled = false; btn.innerHTML = 'Place Grocery Order'
-    alert('Could not send your order. Please try again.')
+    alert('Could not send your order: ' + (error.message || JSON.stringify(error)))
     return
   }
 
   _cart = {}
+  renderGrocery()
+  document.getElementById('groceryNotes').value = ''
   showConfirm('Order received.', 'We\'ll get your groceries sorted and let you know when they\'re ready.')
 }
 

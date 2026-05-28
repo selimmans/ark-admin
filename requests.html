@@ -340,7 +340,10 @@ function renderRequests() {
       ${bodyHtml}
       <div class="req-footer">
         <span class="req-time">${time}</span>
-        <div class="req-actions">${statusButtons}</div>
+        <div class="req-actions">
+          ${statusButtons}
+          <button class="req-btn" style="border-color:var(--negative);color:var(--negative)" onclick="deleteRequest('${r.id}')">Delete</button>
+        </div>
       </div>
     </div>`
   })
@@ -353,6 +356,15 @@ async function updateRequestStatus(id, status) {
   if (error) { alert('Update failed: ' + error.message); return }
   const req = _allRequests.find(r => r.id === id)
   if (req) req.status = status
+  renderRequests()
+  updatePendingBadge()
+}
+
+async function deleteRequest(id) {
+  if (!confirm('Delete this request? This cannot be undone.')) return
+  const { error } = await window._db.from('guest_requests').delete().eq('id', id)
+  if (error) { alert('Delete failed: ' + error.message); return }
+  _allRequests = _allRequests.filter(r => r.id !== id)
   renderRequests()
   updatePendingBadge()
 }
@@ -479,13 +491,30 @@ window.onRoleReady = async function() {
   await loadRequests()
   await loadCatalog()
 
-  // Realtime: new guest requests push a notification + refresh list
+  // Realtime: auto-refresh + notify when new request arrives
   window._db.channel('guest-requests-rt')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guest_requests' }, () => {
-      loadRequests()
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guest_requests' }, async (payload) => {
+      await loadRequests()
       if (typeof window.refreshBadge === 'function') window.refreshBadge()
+      // Show browser notification if permission granted
+      if (Notification.permission === 'granted') {
+        const r = payload.new || {}
+        const label = r.type === 'grocery' ? 'Grocery order' : 'Guest message'
+        new Notification('ARK — New Request', {
+          body: label + ' just came in.',
+          icon: './icons/icon-192.png',
+          badge: './icons/icon-192.png',
+          tag: 'ark-request',
+        })
+      }
     })
-    .subscribe()
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'guest_requests' }, async () => {
+      await loadRequests()
+    })
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') console.log('[ARK] Realtime: watching guest_requests')
+      if (status === 'CHANNEL_ERROR') console.warn('[ARK] Realtime: channel error — requests may not auto-update')
+    })
 }
 </script>
 <script>if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}</script>
