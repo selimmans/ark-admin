@@ -501,11 +501,10 @@ async function submitGrocery() {
   const total = cartItems.reduce((s, i) => s + i.subtotal, 0)
   const notes = document.getElementById('groceryNotes').value.trim()
 
-  const { error } = await _gdb.from('guest_requests').insert({
-    booking_id: _booking.id,
-    type: 'grocery',
-    payload: { items: cartItems, total, notes },
-    status: 'pending',
+  const { error } = await _gdb.rpc('submit_guest_request', {
+    p_booking_id: _booking.id,
+    p_type: 'grocery',
+    p_payload: { items: cartItems, total, notes },
   })
 
   if (error) {
@@ -523,11 +522,10 @@ async function submitGeneral() {
   const msg = document.getElementById('generalMsg').value.trim()
   if (!msg) return
 
-  const { error } = await _gdb.from('guest_requests').insert({
-    booking_id: _booking.id,
-    type: 'general',
-    payload: { message: msg },
-    status: 'pending',
+  const { error } = await _gdb.rpc('submit_guest_request', {
+    p_booking_id: _booking.id,
+    p_type: 'general',
+    p_payload: { message: msg },
   })
 
   if (error) { alert('Could not send your message. Please try again.'); return }
