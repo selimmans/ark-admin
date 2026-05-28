@@ -263,8 +263,7 @@ const _gdb = window.supabase.createClient(
   { auth: { persistSession: false } }
 )
 
-const PORTAL_FN = 'https://fqpxbvpjugbqelivtyae.supabase.co/functions/v1/portal-auth'
-const ARK_LAT   = 31.4395183, ARK_LNG = 26.9565565
+const ARK_LAT = 31.4395183, ARK_LNG = 26.9565565
 
 // ── State ──────────────────────────────────────────────────────────────────────
 let _booking    = null
@@ -283,22 +282,18 @@ let _map        = null
   setGateMsg('Loading your stay…')
 
   try {
-    const res  = await fetch(PORTAL_FN, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: code }),
-    })
-    const data = await res.json()
+    // Use SECURITY DEFINER RPC — bypasses RLS, works with anon key
+    const { data: row, error: rpcErr } = await _gdb.rpc('portal_lookup', { p_token: code })
 
-    if (!res.ok) {
-      if (data.error === 'not_yet')  return showError('Not quite yet.', `Your stay begins on ${fmtDate(data.checkIn)}. This link will activate the day before.`)
-      if (data.error === 'expired')  return showError('Your stay has ended.', `We hope you had a wonderful time. Check-out was ${fmtDate(data.checkOut)}.`)
-      if (data.error === 'invalid_token') return showError('Link not found.', 'This link may be invalid or has expired. Please contact ARK.')
-      return showError('Something went wrong.', 'Please try again or contact ARK directly.')
-    }
+    if (rpcErr) return showError('Something went wrong.', 'Please try again or contact ARK directly.')
+    if (!row)   return showError('Link not found.', 'This link may be invalid or has expired. Please contact ARK.')
 
-    _booking = data.booking
-    renderWelcome(data)
+    if (row.not_yet)  return showError('Not quite yet.', `Your stay begins on ${fmtDate(row.check_in)}. This link will activate the day before.`)
+    if (row.expired)  return showError('Your stay has ended.', `We hope you had a wonderful time. Check-out was ${fmtDate(row.check_out)}.`)
+    if (!row.is_active) return showError('Link not active.', 'Please contact ARK if you think this is a mistake.')
+
+    _booking = { id: row.id, guestName: row.guest_name, checkIn: row.check_in, checkOut: row.check_out, status: row.status }
+    renderWelcome({ booking: _booking, units: row.units || [], unitInfo: row.unit_info || {} })
     await Promise.all([loadGuide(), loadGrocery()])
     revealPortal()
 

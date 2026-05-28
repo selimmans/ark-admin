@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
       .single()
 
     if (error || !booking) {
-      return new Response(JSON.stringify({ error: 'invalid_token' }), { status: 404, headers: CORS })
+      console.error('Booking lookup failed:', error?.message, '| token:', token.trim())
+      return new Response(JSON.stringify({ error: 'invalid_token', detail: error?.message }), { status: 404, headers: CORS })
     }
 
     // Check access window: 1 day before check-in until check-out

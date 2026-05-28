@@ -702,6 +702,7 @@ function buildBookingFromForm(){
   const paidAt = selectedPayment==='paid' ? (existing?.paidAt || toDateStr(new Date())) : null;
   return {
     id:editingBookingId||uuid(), guestName:document.getElementById('f-guestName').value.trim(),
+    accessToken: existing?.accessToken || null,  // preserve existing token — db.js generates if missing
     phone:document.getElementById('f-phone').value.trim(), accommodations:[...selectedUnits],
     checkIn:getCheckIn(), checkOut:getCheckOut(), groupSize:guestCount,
     extras:getExtrasFromForm(), baseAmount:0,
