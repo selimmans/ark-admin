@@ -149,7 +149,8 @@
     .extra-qty-wrap{display:flex;align-items:center;gap:0;border:0.5px solid var(--border);flex-shrink:0;}
     .extra-qty-btn{width:26px;height:34px;border:none;background:transparent;cursor:pointer;font-size:15px;color:var(--ink-muted);display:flex;align-items:center;justify-content:center;transition:background 140ms ease;}
     .extra-qty-btn:hover{background:var(--sand);color:var(--ink);}
-    .extra-qty-val{width:28px;text-align:center;font-family:var(--sans);font-size:12px;font-weight:400;color:var(--ink);border-left:0.5px solid var(--border);border-right:0.5px solid var(--border);height:34px;line-height:34px;}
+    .extra-qty-val{width:36px;text-align:center;font-family:var(--sans);font-size:12px;font-weight:400;color:var(--ink);border-left:0.5px solid var(--border);border-right:0.5px solid var(--border);border-top:none;border-bottom:none;border-radius:0;height:34px;padding:0;background:transparent;outline:none;-moz-appearance:textfield;}
+    .extra-qty-val::-webkit-outer-spin-button,.extra-qty-val::-webkit-inner-spin-button{-webkit-appearance:none;}
     .btn-add-extra{font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border:0.5px dashed var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;width:100%;text-align:center;transition:all 160ms ease;}
     .btn-add-extra:hover{border-color:var(--sea);color:var(--sea-dim);border-style:solid;}
 
@@ -707,7 +708,7 @@ function onTotalChange(){
 function renderExtrasList(extras){ const l=document.getElementById('extrasList'); l.innerHTML=''; extras.forEach(e=>addExtraRow(e.name,e.price,e.qty||1)); }
 function addExtraRow(name='',price='',qty=1){
   const l=document.getElementById('extrasList'), row=document.createElement('div'); row.className='extra-row';
-  row.innerHTML=`<input class="form-input extra-name" type="text" list="extrasSuggestions" placeholder="Extra name" value="${name}" oninput="onExtraNameInput(this)" onchange="updatePricing()" /><div class="extra-qty-wrap"><button type="button" class="extra-qty-btn" onclick="changeExtraQty(this,-1)">−</button><div class="extra-qty-val">${qty}</div><button type="button" class="extra-qty-btn" onclick="changeExtraQty(this,1)">+</button></div><input class="form-input price extra-price" type="number" placeholder="Price" value="${price}" min="0" oninput="updatePricing()" /><button class="btn-remove-extra" onclick="this.parentElement.remove();updatePricing()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+  row.innerHTML=`<input class="form-input extra-name" type="text" list="extrasSuggestions" placeholder="Extra name" value="${name}" oninput="onExtraNameInput(this)" onchange="updatePricing()" /><div class="extra-qty-wrap"><button type="button" class="extra-qty-btn" onclick="changeExtraQty(this,-1)">−</button><input type="number" class="extra-qty-val" value="${qty}" min="1" oninput="updatePricing()" /><button type="button" class="extra-qty-btn" onclick="changeExtraQty(this,1)">+</button></div><input class="form-input price extra-price" type="number" placeholder="Price" value="${price}" min="0" oninput="updatePricing()" /><button class="btn-remove-extra" onclick="this.parentElement.remove();updatePricing()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   l.appendChild(row);
 }
 function onExtraNameInput(input){
@@ -717,13 +718,13 @@ function onExtraNameInput(input){
 function getExtrasFromForm(){
   return Array.from(document.querySelectorAll('.extra-row')).map(r=>({
     name:  r.querySelector('.extra-name').value.trim(),
-    qty:   parseInt(r.querySelector('.extra-qty-val').textContent)||1,
+    qty:   Math.max(1,parseInt(r.querySelector('.extra-qty-val').value)||1),
     price: parseFloat(r.querySelector('.extra-price').value)||0,
   })).filter(e=>e.name);
 }
 function changeExtraQty(btn,delta){
-  const val=btn.parentElement.querySelector('.extra-qty-val');
-  val.textContent=Math.max(1,(parseInt(val.textContent)||1)+delta);
+  const inp=btn.parentElement.querySelector('.extra-qty-val');
+  inp.value=Math.max(1,(parseInt(inp.value)||1)+delta);
   updatePricing();
 }
 function refreshExtrasSuggestions(){
