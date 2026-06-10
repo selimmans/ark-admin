@@ -118,7 +118,7 @@ window.addEventListener('online', _replayQueue)
 // ─── DB object ────────────────────────────────────────────────────────────
 
 const _CACHE_KEY = 'ark_db_v1'
-const _CACHE_TTL = 90_000 // 90 s — serve from cache, refresh silently after
+const _CACHE_TTL = 300_000 // 5 min — realtime handles live changes; no need to refetch sooner
 
 window.DB = {
   _bookings: [], _expenses: [], _tasks: [], _extras: [], _units: [],
@@ -131,7 +131,8 @@ window.DB = {
         const { ts, d } = JSON.parse(raw)
         const age = Date.now() - ts
         // Offline: use any cached data regardless of age
-        // Online + fresh (< TTL): use cache and refresh silently in background
+        // Online + fresh: use cache as-is — realtime subscription handles live changes,
+        // so no background refetch needed (that was causing the flicker on every page nav)
         if (!navigator.onLine || age < _CACHE_TTL) {
           this._bookings = d.bookings
           this._expenses = d.expenses
@@ -139,12 +140,6 @@ window.DB = {
           this._extras   = d.extras || []
           this._units    = d.units
           this.setupRealtime()
-          if (navigator.onLine) {
-            // Refresh silently in background; re-render when done
-            this._fetchAll().then(() => {
-              if (typeof window.onDataChange === 'function') window.onDataChange()
-            })
-          }
           return
         }
       }

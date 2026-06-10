@@ -372,6 +372,7 @@
         <button class="btn" id="invoiceBtn" onclick="openInvoice()" style="display:none;gap:5px;align-items:center">
           <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><rect x="5" y="2" width="14" height="20" rx="1"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="12" y2="15"/></svg>
           Invoice
+          <span id="invoicedTag" style="display:none;font-size:7px;letter-spacing:1px;color:var(--positive);font-weight:300;margin-left:2px"></span>
         </button>
         <button class="btn" onclick="closeBookingModal()">Cancel</button>
         <button class="btn primary" onclick="saveBooking()">Save Booking</button>
@@ -805,6 +806,15 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
   document.getElementById('deleteBookingBtn').style.display=booking?'block':'none';
   document.getElementById('sharePortalBtn').style.display=(booking?.accessToken)?'flex':'none';
   document.getElementById('invoiceBtn').style.display=booking?'flex':'none';
+  if(booking){
+    try{
+      const log=JSON.parse(localStorage.getItem('ark_invoices_v1')||'[]');
+      const entry=log.find(e=>e.bookingId===booking.id);
+      const tag=document.getElementById('invoicedTag');
+      if(entry){ tag.textContent='· '+entry.invoiceNumber; tag.style.display='inline'; }
+      else { tag.style.display='none'; }
+    }catch(e){}
+  } else { document.getElementById('invoicedTag').style.display='none'; }
   document.getElementById('conflictWarning').classList.remove('visible');
   document.getElementById('overrideConflict').checked=false;
 
