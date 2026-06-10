@@ -462,9 +462,27 @@ async function saveTask(){
     notes:document.getElementById('f-notes').value.trim(),
     status:modalStatus,
   };
+  const isNew=!editingId;
   const base = editingId ? (DB.getTasks().find(t=>t.id===editingId)||{}) : {id:uuid()};
-  await DB.saveTask({...base, ...data});
+  const saved = await DB.saveTask({...base, ...data});
   closeModal(); render();
+
+  // Push notification to all staff
+  try {
+    const unitName = saved.unitId ? (DB.getUnits().find(u=>u.id===saved.unitId)?.name||'') : '';
+    const parts = [saved.title];
+    if(unitName) parts.push(unitName);
+    if(saved.date) parts.push(saved.date);
+    fetch('https://fqpxbvpjugbqelivtyae.supabase.co/functions/v1/notify-request', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_KEY}`},
+      body: JSON.stringify({
+        notif_title: isNew ? 'ARK — New Task' : 'ARK — Task Updated',
+        notif_body:  parts.join(' · '),
+        notif_url:   'https://selimmans.github.io/ark-admin/tasks.html',
+      }),
+    }).catch(()=>{});
+  } catch(_){}
 }
 
 async function deleteTask(){

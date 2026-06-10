@@ -108,14 +108,25 @@ Deno.serve(async (req) => {
     const { data: subs } = await supabase.from('push_subscriptions').select('id,endpoint,p256dh,auth')
     if (!subs?.length) return new Response(JSON.stringify({ sent: 0, reason: 'no_subscribers' }), { headers: CORS })
 
-    const label   = reqType === 'grocery' ? 'Grocery order' : 'Guest message'
-    const nameStr = guestName ? ` from ${guestName}` : ''
+    // Allow callers to pass a fully custom title + body (e.g. task notifications)
+    let notifTitle: string, notifBody: string, notifUrl: string
+    if (body.notif_title) {
+      notifTitle = body.notif_title
+      notifBody  = body.notif_body  || ''
+      notifUrl   = body.notif_url   || 'https://selimmans.github.io/ark-admin/tasks.html'
+    } else {
+      const label   = reqType === 'grocery' ? 'Grocery order' : 'Guest message'
+      const nameStr = guestName ? ` from ${guestName}` : ''
+      notifTitle = 'ARK — New Request'
+      notifBody  = `${label}${nameStr} just came in.`
+      notifUrl   = 'https://selimmans.github.io/ark-admin/requests.html'
+    }
 
     const payload = JSON.stringify({
-      title: 'ARK — New Request',
-      body:  `${label}${nameStr} just came in.`,
+      title: notifTitle,
+      body:  notifBody,
       icon:  '/ark-admin/icons/icon-192.png',
-      url:   'https://selimmans.github.io/ark-admin/requests.html',
+      url:   notifUrl,
       count: 1,
     })
 
