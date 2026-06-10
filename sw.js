@@ -1,4 +1,4 @@
-const CACHE   = 'ark-os-v5'
+const CACHE   = 'ark-os-v6'
 const BASE_URL = 'https://selimmans.github.io/ark-admin'
 
 const SHELL = [
@@ -8,6 +8,7 @@ const SHELL = [
   './requests.html',
   './finance.html',
   './analytics.html',
+  './invoice.html',
   './auth.html',
   './guest.html',
   './js/supabase.js',

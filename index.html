@@ -369,6 +369,10 @@
           <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Share Portal
         </button>
+        <button class="btn" id="invoiceBtn" onclick="openInvoice()" style="display:none;gap:5px;align-items:center">
+          <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round"><rect x="5" y="2" width="14" height="20" rx="1"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="12" y2="15"/></svg>
+          Invoice
+        </button>
         <button class="btn" onclick="closeBookingModal()">Cancel</button>
         <button class="btn primary" onclick="saveBooking()">Save Booking</button>
       </div>
@@ -800,6 +804,7 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
   document.getElementById('bookingModalTitle').textContent=booking?'Edit Booking':'New Booking';
   document.getElementById('deleteBookingBtn').style.display=booking?'block':'none';
   document.getElementById('sharePortalBtn').style.display=(booking?.accessToken)?'flex':'none';
+  document.getElementById('invoiceBtn').style.display=booking?'flex':'none';
   document.getElementById('conflictWarning').classList.remove('visible');
   document.getElementById('overrideConflict').checked=false;
 
@@ -835,6 +840,7 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
   document.getElementById('bookingOverlay').classList.add('open');
 }
 function closeBookingModal(){ document.getElementById('bookingOverlay').classList.remove('open'); editingBookingId=null; }
+function openInvoice(){ if(editingBookingId) window.open('./invoice.html?id='+editingBookingId,'_blank'); }
 
 function renderUnitChips(){
   const c=document.getElementById('unitChips'); c.innerHTML='';
