@@ -165,8 +165,13 @@
 
 <div class="page">
 
-  <!-- SUMMARY STRIP -->
-  <div class="summary-strip" id="summaryStrip"></div>
+  <!-- SUMMARY STRIP — pre-rendered skeleton so page is never blank -->
+  <div class="summary-strip" id="summaryStrip">
+    <div class="strip-item"><div class="strip-label">Open</div><div class="strip-val" style="color:var(--ink-muted)">—</div></div>
+    <div class="strip-item"><div class="strip-label">In Progress</div><div class="strip-val" style="color:var(--ink-muted)">—</div></div>
+    <div class="strip-item"><div class="strip-label">Done</div><div class="strip-val" style="color:var(--ink-muted)">—</div></div>
+    <div class="strip-item"><div class="strip-label">Urgent Open</div><div class="strip-val" style="color:var(--ink-muted)">—</div></div>
+  </div>
 
   <!-- FILTERS -->
   <div class="section-header">

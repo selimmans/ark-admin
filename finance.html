@@ -539,10 +539,12 @@ function outstandingAmount(b) {
   return Math.max(0, (b.finalAmount || 0) - deposited);
 }
 
-// "Collection date" for a booking (paidAt for paid; checkIn for deposit)
+// "Collection date" for a booking
+// paid    → paidAt if set, otherwise checkOut (booking is done, money is collected)
+// deposit → checkIn (deposit taken at/before arrival)
 function collectionDate(b) {
-  if (b.paymentStatus === 'paid')    return b.paidAt   || null;
-  if (b.paymentStatus === 'deposit') return b.checkIn  || null;
+  if (b.paymentStatus === 'paid')    return b.paidAt || b.checkOut || b.checkIn || null;
+  if (b.paymentStatus === 'deposit') return b.checkIn || null;
   return null;
 }
 
