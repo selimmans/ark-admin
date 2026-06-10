@@ -840,7 +840,18 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
   document.getElementById('bookingOverlay').classList.add('open');
 }
 function closeBookingModal(){ document.getElementById('bookingOverlay').classList.remove('open'); editingBookingId=null; }
-function openInvoice(){ if(editingBookingId) window.open('./invoice.html?id='+editingBookingId,'_blank'); }
+function openInvoice(){
+  if(!editingBookingId) return;
+  const booking = DB.getBookings().find(b => b.id === editingBookingId);
+  if(!booking) return;
+  // Pass data via localStorage so invoice.html renders instantly without auth
+  localStorage.setItem('ark_invoice_payload', JSON.stringify({
+    booking: booking,
+    units:   DB.getUnits(),
+    ts:      Date.now()
+  }));
+  window.open('./invoice.html?id='+editingBookingId,'_blank');
+}
 
 function renderUnitChips(){
   const c=document.getElementById('unitChips'); c.innerHTML='';

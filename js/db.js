@@ -124,22 +124,27 @@ window.DB = {
   _bookings: [], _expenses: [], _tasks: [], _extras: [], _units: [],
 
   async load() {
-    // Try sessionStorage cache — instant load, no Supabase round-trip
+    // Try localStorage cache — persists across sessions for full offline support
     try {
-      const raw = sessionStorage.getItem(_CACHE_KEY)
+      const raw = localStorage.getItem(_CACHE_KEY)
       if (raw) {
         const { ts, d } = JSON.parse(raw)
-        if (Date.now() - ts < _CACHE_TTL) {
+        const age = Date.now() - ts
+        // Offline: use any cached data regardless of age
+        // Online + fresh (< TTL): use cache and refresh silently in background
+        if (!navigator.onLine || age < _CACHE_TTL) {
           this._bookings = d.bookings
           this._expenses = d.expenses
           this._tasks    = d.tasks
           this._extras   = d.extras || []
           this._units    = d.units
           this.setupRealtime()
-          // Refresh silently in background; re-render when done
-          this._fetchAll().then(() => {
-            if (typeof window.onDataChange === 'function') window.onDataChange()
-          })
+          if (navigator.onLine) {
+            // Refresh silently in background; re-render when done
+            this._fetchAll().then(() => {
+              if (typeof window.onDataChange === 'function') window.onDataChange()
+            })
+          }
           return
         }
       }
@@ -167,7 +172,7 @@ window.DB = {
 
   _saveCache() {
     try {
-      sessionStorage.setItem(_CACHE_KEY, JSON.stringify({
+      localStorage.setItem(_CACHE_KEY, JSON.stringify({
         ts: Date.now(),
         d: {
           bookings: this._bookings, expenses: this._expenses,

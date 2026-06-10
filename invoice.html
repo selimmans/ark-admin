@@ -9,17 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="./js/supabase.js"></script>
-  <script src="./js/db.js"></script>
-  <script src="./js/auth.js"></script>
-  <script src="./js/notifications.js"></script>
   <style>
     :root {
       --ink:#1C1A16; --ink-soft:#2C2A24; --ink-muted:#5A5248;
       --cream:#F5F2EC; --sand:#EAE0CE; --border:#CEC3B0;
       --earth:#B09070; --earth-dim:#8A7055;
-      --sea:#4A7A8A; --sea-dim:#3A6070; --sea-pale:rgba(74,122,138,0.09);
+      --sea:#4A7A8A; --sea-dim:#3A6070;
       --positive:#4A7A4A; --negative:#8A4A4A;
       --display:'Cinzel',Georgia,serif;
       --serif:'Cormorant Garamond',Georgia,serif;
@@ -64,6 +59,14 @@
       cursor:pointer;transition:background 160ms;white-space:nowrap;flex-shrink:0;
     }
     .ctrl-print:hover{background:var(--ink-soft);}
+    .ctrl-whatsapp{
+      font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;
+      padding:8px 16px;border:0.5px solid #25D366;background:#25D366;color:#fff;
+      cursor:pointer;transition:background 160ms;white-space:nowrap;flex-shrink:0;
+      display:flex;align-items:center;
+    }
+    .ctrl-whatsapp:hover{background:#1ebe5a;}
+    .ctrl-whatsapp:disabled{opacity:0.5;cursor:wait;}
 
     /* ══ PAYMENT CONFIG PANEL (screen only) ══ */
     .pay-cfg{
@@ -156,10 +159,10 @@
     .inv-footer{margin-top:52px;padding-top:22px;border-top:0.5px solid #CEC3B0;font-family:var(--serif);font-size:14px;font-style:italic;font-weight:300;color:#8A7055;text-align:center;}
 
     /* ══ VISIBILITY TOGGLES ══ */
-    .inv.hide-booking  .inv-s-booking  {display:none;}
-    .inv.hide-charges  .inv-s-charges  {display:none;}
-    .inv.hide-extras   .inv-extras-rows{display:none;}
-    .inv.hide-discount .inv-disc-row   {display:none;}
+    .inv.hide-booking  .inv-s-booking   {display:none;}
+    .inv.hide-charges  .inv-s-charges   {display:none;}
+    .inv.hide-extras   .inv-extras-rows {display:none;}
+    .inv.hide-discount .inv-disc-row    {display:none;}
     .inv.hide-deposit  .inv-deposit-rows{display:none;}
 
     /* ══ PRINT STYLES ══ */
@@ -188,11 +191,11 @@
   </button>
   <div class="ctrl-sep"></div>
   <div class="ctrl-toggles">
-    <button class="tog"     data-s="booking"  onclick="tog(this,'booking')">Booking</button>
-    <button class="tog"     data-s="charges"  onclick="tog(this,'charges')">Charges</button>
-    <button class="tog"     data-s="extras"   onclick="tog(this,'extras')">Extras</button>
-    <button class="tog"     data-s="discount" onclick="tog(this,'discount')">Discount</button>
-    <button class="tog"     id="togDeposit" data-s="deposit"  onclick="tog(this,'deposit')">Deposit</button>
+    <button class="tog"  data-s="booking"  onclick="tog(this,'booking')">Booking</button>
+    <button class="tog"  data-s="charges"  onclick="tog(this,'charges')">Charges</button>
+    <button class="tog"  data-s="extras"   onclick="tog(this,'extras')">Extras</button>
+    <button class="tog"  data-s="discount" onclick="tog(this,'discount')">Discount</button>
+    <button class="tog"  id="togDeposit" data-s="deposit" onclick="tog(this,'deposit')">Deposit</button>
   </div>
   <div class="ctrl-sep"></div>
   <select class="ctrl-pay-sel" id="payMethod" onchange="onPayChange()">
@@ -204,7 +207,11 @@
   <div class="ctrl-sep"></div>
   <button class="ctrl-print" onclick="window.print()">
     <svg viewBox="0 0 24 24" style="width:11px;height:11px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;margin-right:5px;vertical-align:middle"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-    Print · Save PDF
+    Print &middot; Save PDF
+  </button>
+  <button class="ctrl-whatsapp" id="waBtn" onclick="shareWhatsApp()">
+    <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;margin-right:5px;vertical-align:middle" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    WhatsApp
   </button>
 </div>
 
@@ -244,32 +251,33 @@
 <!-- ══ INVOICE ══ -->
 <div class="inv-page">
   <div class="inv" id="inv">
-    <div style="padding:60px;text-align:center;font-family:var(--sans);font-size:12px;color:var(--ink-muted)">Loading…</div>
+    <div style="padding:60px;text-align:center;font-family:var(--sans);font-size:12px;color:var(--ink-muted)">Loading&hellip;</div>
   </div>
 </div>
 
 <script>
 /* ══════════════════════════════════════════════════════
-   INVOICE GENERATOR
+   INVOICE GENERATOR — no auth dependency
+   Data is injected by the parent tab via localStorage.
 ══════════════════════════════════════════════════════ */
-const PAY_KEY = 'ark_invoice_pay_v1';
-let _booking = null;
+const PAY_KEY  = 'ark_invoice_pay_v1';
+const DATA_KEY = 'ark_invoice_payload';
 
 /* ── Helpers ── */
-function fmtC(n){ return 'EGP ' + Math.round(n||0).toLocaleString('en-EG'); }
+function fmtC(n){ return 'EGP ' + Math.round(n||0).toLocaleString('en-EG'); }
 
 function fmtDT(str){
   if(!str) return '—';
-  const parts = str.split('T');
-  const d = new Date(parts[0]+'T12:00:00');
-  const label = d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+  var parts = str.split('T');
+  var d = new Date(parts[0]+'T12:00:00');
+  var label = d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
   if(parts[1]) return label + ' · ' + parts[1].slice(0,5);
   return label;
 }
 
 function invNum(id){
-  const y = new Date().getFullYear();
-  return 'ARK‑' + y + '‑' + (id||'').slice(-6).toUpperCase();
+  var y = new Date().getFullYear();
+  return 'ARK-' + y + '-' + (id||'').slice(-6).toUpperCase();
 }
 
 function todayLabel(){
@@ -278,52 +286,52 @@ function todayLabel(){
 
 function nights(ci,co){
   if(!ci||!co) return 0;
-  return Math.round((new Date(co.split('T')[0])-new Date(ci.split('T')[0]))/(864e5));
+  return Math.round((new Date(co.split('T')[0])-new Date(ci.split('T')[0]))/864e5);
 }
 
 /* ── Payment config (localStorage) ── */
-function loadCfg(){ try{ return JSON.parse(localStorage.getItem(PAY_KEY))||{}; }catch(_){ return {}; } }
+function loadCfg(){ try{ return JSON.parse(localStorage.getItem(PAY_KEY))||{}; }catch(e){ return {}; } }
 function saveCfg(){
   localStorage.setItem(PAY_KEY, JSON.stringify({
-    ipName:  document.getElementById('ip-name').value,
-    ipNum:   document.getElementById('ip-num').value,
-    bkBank:  document.getElementById('bk-bank').value,
-    bkName:  document.getElementById('bk-name').value,
-    bkNum:   document.getElementById('bk-num').value,
+    ipName: document.getElementById('ip-name').value,
+    ipNum:  document.getElementById('ip-num').value,
+    bkBank: document.getElementById('bk-bank').value,
+    bkName: document.getElementById('bk-name').value,
+    bkNum:  document.getElementById('bk-num').value,
   }));
 }
 
 function onPayChange(){
-  const m = document.getElementById('payMethod').value;
-  const cfg   = document.getElementById('payCfg');
-  const ipF   = document.getElementById('ipFields');
-  const bkF   = document.getElementById('bkFields');
-  cfg.style.display   = m ? 'flex' : 'none';
-  ipF.style.display   = (m==='instapay'||m==='both') ? 'flex' : 'none';
-  bkF.style.display   = (m==='bank'||m==='both')    ? 'block': 'none';
+  var m   = document.getElementById('payMethod').value;
+  var cfg = document.getElementById('payCfg');
+  var ipF = document.getElementById('ipFields');
+  var bkF = document.getElementById('bkFields');
+  cfg.style.display = m ? 'flex' : 'none';
+  ipF.style.display = (m==='instapay'||m==='both') ? 'flex'  : 'none';
+  bkF.style.display = (m==='bank'    ||m==='both') ? 'block' : 'none';
   renderPaySection();
 }
 
 function renderPaySection(){
-  const el = document.getElementById('inv-pay-inner');
-  const sec = document.getElementById('inv-pay-wrap');
+  var el  = document.getElementById('inv-pay-inner');
+  var sec = document.getElementById('inv-pay-wrap');
   if(!el||!sec) return;
-  const m = document.getElementById('payMethod').value;
+  var m = document.getElementById('payMethod').value;
   if(!m){ sec.style.display='none'; return; }
-  const c = loadCfg();
-  let html = '';
+  var c = loadCfg();
+  var html = '';
   if(m==='instapay'||m==='both'){
-    html += `<div class="inv-pay-block">
-      <div class="inv-pay-method-lbl">Instapay</div>
-      <div class="inv-pay-detail">${c.ipNum||'—'}${c.ipName?' · <strong>'+c.ipName+'</strong>':''}</div>
-    </div>`;
+    html += '<div class="inv-pay-block">'
+      + '<div class="inv-pay-method-lbl">Instapay</div>'
+      + '<div class="inv-pay-detail">'+(c.ipNum||'—')+(c.ipName?' · <strong>'+c.ipName+'</strong>':'')+'</div>'
+      + '</div>';
   }
   if(m==='bank'||m==='both'){
-    const parts = [c.bkBank,c.bkName,c.bkNum].filter(Boolean);
-    html += `<div class="inv-pay-block">
-      <div class="inv-pay-method-lbl">Bank Transfer</div>
-      <div class="inv-pay-detail">${parts.length ? parts.map((p,i)=>i===0?`<strong>${p}</strong>`:p).join(' · ') : '—'}</div>
-    </div>`;
+    var parts = [c.bkBank,c.bkName,c.bkNum].filter(Boolean);
+    html += '<div class="inv-pay-block">'
+      + '<div class="inv-pay-method-lbl">Bank Transfer</div>'
+      + '<div class="inv-pay-detail">'+(parts.length ? parts.map(function(p,i){return i===0?'<strong>'+p+'</strong>':p;}).join(' · ') : '—')+'</div>'
+      + '</div>';
   }
   el.innerHTML = html;
   sec.style.display = '';
@@ -336,157 +344,218 @@ function tog(btn, section){
 }
 
 /* ── Render invoice ── */
-function renderInvoice(b){
-  const units   = DB.getUnits();
-  const unitStr = (b.accommodations||[])
-    .map(id => { const u=units.find(u=>u.id===id); return u?u.name:id; })
+function renderInvoice(b, units){
+  units = units || [];
+  var unitStr = (b.accommodations||[])
+    .map(function(id){ var u=units.find(function(u){return u.id===id;}); return u?u.name:id; })
     .join(', ') || '—';
-  const n       = nights(b.checkIn, b.checkOut);
-  const extras  = (b.extras||[]).filter(e => e.name && (e.price||0) > 0);
-  const extrasTotal = extras.reduce((s,e) => s + (e.price||0)*(e.qty||1), 0);
-  const discount= b.discountAmount || 0;
-  const total   = b.finalAmount    || 0;
-  const deposit = b.depositAmount  || 0;
-  const balance = Math.max(0, total - deposit);
 
-  // Accommodation amount: use saved baseAmount if > 0, otherwise back-calculate
-  const accom = (b.baseAmount > 0) ? b.baseAmount : Math.max(0, total + discount - extrasTotal);
+  var n          = nights(b.checkIn, b.checkOut);
+  var extras     = (b.extras||[]).filter(function(e){ return e.name && (e.price||0)>0; });
+  var extrasTotal= extras.reduce(function(s,e){ return s+(e.price||0)*(e.qty||1); },0);
+  var discount   = b.discountAmount || 0;
+  var total      = b.finalAmount    || 0;
+  var deposit    = b.depositAmount  || 0;
+  var balance    = Math.max(0, total - deposit);
 
-  document.getElementById('inv').innerHTML = `
-    <!-- HEADER -->
-    <div class="inv-top">
-      <div>
-        <div class="inv-brand-name">ARK</div>
-        <div class="inv-brand-sub">Properties</div>
-      </div>
-      <div class="inv-meta-block">
-        <div class="inv-title">Invoice</div>
-        <div class="inv-ref">
-          ${invNum(b.id)}<br>
-          ${todayLabel()}
-        </div>
-      </div>
-    </div>
+  // Accommodation: use saved baseAmount if available, else back-calculate
+  var accom = (b.baseAmount > 0) ? b.baseAmount : Math.max(0, total + discount - extrasTotal);
 
-    <!-- BILL TO -->
-    <div class="inv-slabel">Bill To</div>
-    <div class="inv-guest-name">${b.guestName || '—'}</div>
-    ${b.phone ? `<div class="inv-guest-phone">${b.phone}</div>` : ''}
+  var extrasRows = extras.map(function(e){
+    return '<tr class="extra-row inv-extras-rows">'
+      + '<td>'+e.name+((e.qty||1)>1?' <span style="color:#8A7055;font-size:11px">&times; '+e.qty+'</span>':'')+'</td>'
+      + '<td class="r">'+fmtC((e.price||0)*(e.qty||1))+'</td>'
+      + '</tr>';
+  }).join('');
 
-    <!-- BOOKING DETAILS -->
-    <div class="inv-s-booking">
-      <div class="inv-hr"></div>
-      <div class="inv-slabel">Booking Details</div>
-      <div class="inv-drow"><span class="inv-dk">Property</span><span class="inv-dv">${unitStr}</span></div>
-      <div class="inv-drow"><span class="inv-dk">Check-in</span><span class="inv-dv">${fmtDT(b.checkIn)}</span></div>
-      <div class="inv-drow"><span class="inv-dk">Check-out</span><span class="inv-dv">${fmtDT(b.checkOut)}</span></div>
-      <div class="inv-drow"><span class="inv-dk">Duration</span><span class="inv-dv">${n} night${n!==1?'s':''}</span></div>
-      ${b.groupSize ? `<div class="inv-drow"><span class="inv-dk">Guests</span><span class="inv-dv">${b.groupSize}</span></div>` : ''}
-      ${b.source    ? `<div class="inv-drow"><span class="inv-dk">Source</span><span class="inv-dv">${b.source}</span></div>` : ''}
-    </div>
+  var discRow = discount>0
+    ? '<tr class="disc-row inv-disc-row"><td>Discount</td><td class="r">&minus; '+fmtC(discount)+'</td></tr>'
+    : '';
 
-    <!-- CHARGES -->
-    <div class="inv-s-charges">
-      <div class="inv-hr"></div>
-      <div class="inv-slabel">Charges</div>
-      <table class="inv-tbl">
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th class="r">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Accommodation · ${n} night${n!==1?'s':''}</td>
-            <td class="r">${fmtC(accom)}</td>
-          </tr>
-          ${extras.map(e => `
-          <tr class="extra-row inv-extras-rows">
-            <td>${e.name}${(e.qty||1)>1 ? ` <span style="color:#8A7055;font-size:11px">× ${e.qty}</span>` : ''}</td>
-            <td class="r">${fmtC((e.price||0)*(e.qty||1))}</td>
-          </tr>`).join('')}
-          ${discount>0 ? `
-          <tr class="disc-row inv-disc-row">
-            <td>Discount</td>
-            <td class="r">− ${fmtC(discount)}</td>
-          </tr>` : ''}
-        </tbody>
-      </table>
+  var depositRows = deposit>0
+    ? '<div class="inv-trow deposit-row">'
+        + '<span class="inv-tlabel">Deposit Paid</span>'
+        + '<span class="inv-tamount" style="color:#4A7A4A">&minus; '+fmtC(deposit)+'</span>'
+      + '</div>'
+      + '<div class="inv-trow balance-row">'
+        + '<span class="inv-tlabel">Balance Due</span>'
+        + '<span class="inv-tamount" style="color:#8A4A4A">'+fmtC(balance)+'</span>'
+      + '</div>'
+    : '';
 
-      <!-- TOTALS -->
-      <div class="inv-totals">
-        <div class="inv-hr strong" style="margin-top:16px"></div>
-        <div class="inv-hr" style="margin-top:2px;margin-bottom:0"></div>
-        <div class="inv-trow total-row" style="margin-top:14px">
-          <span class="inv-tlabel">Total</span>
-          <span class="inv-tamount">${fmtC(total)}</span>
-        </div>
-        <div class="inv-deposit-rows">
-          ${deposit>0 ? `
-          <div class="inv-trow deposit-row">
-            <span class="inv-tlabel">Deposit Paid</span>
-            <span class="inv-tamount" style="color:#4A7A4A">− ${fmtC(deposit)}</span>
-          </div>
-          <div class="inv-trow balance-row">
-            <span class="inv-tlabel">Balance Due</span>
-            <span class="inv-tamount" style="color:#8A4A4A">${fmtC(balance)}</span>
-          </div>` : ''}
-        </div>
-      </div>
-    </div>
+  var guestRows = ''
+    + (b.groupSize ? '<div class="inv-drow"><span class="inv-dk">Guests</span><span class="inv-dv">'+b.groupSize+'</span></div>' : '')
+    + (b.source    ? '<div class="inv-drow"><span class="inv-dk">Source</span><span class="inv-dv">'+b.source+'</span></div>'    : '');
 
-    <!-- PAYMENT INFO -->
-    <div class="inv-s-payment" id="inv-pay-wrap" style="display:none">
-      <div class="inv-hr"></div>
-      <div class="inv-slabel">Payment Instructions</div>
-      <div id="inv-pay-inner"></div>
-    </div>
+  document.getElementById('inv').innerHTML =
+    /* HEADER */
+    '<div class="inv-top">'
+      + '<div>'
+        + '<div class="inv-brand-name">ARK</div>'
+        + '<div class="inv-brand-sub">Properties</div>'
+      + '</div>'
+      + '<div class="inv-meta-block">'
+        + '<div class="inv-title">Invoice</div>'
+        + '<div class="inv-ref">'+invNum(b.id)+'<br>'+todayLabel()+'</div>'
+      + '</div>'
+    + '</div>'
 
-    <!-- FOOTER -->
-    <div class="inv-footer">Thank you for choosing ARK.</div>
-  `;
+    /* BILL TO */
+    + '<div class="inv-slabel">Bill To</div>'
+    + '<div class="inv-guest-name">'+(b.guestName||'—')+'</div>'
+    + (b.phone ? '<div class="inv-guest-phone">'+b.phone+'</div>' : '')
 
-  // If no deposit, disable the deposit toggle
+    /* BOOKING DETAILS */
+    + '<div class="inv-s-booking">'
+      + '<div class="inv-hr"></div>'
+      + '<div class="inv-slabel">Booking Details</div>'
+      + '<div class="inv-drow"><span class="inv-dk">Property</span><span class="inv-dv">'+unitStr+'</span></div>'
+      + '<div class="inv-drow"><span class="inv-dk">Check-in</span><span class="inv-dv">'+fmtDT(b.checkIn)+'</span></div>'
+      + '<div class="inv-drow"><span class="inv-dk">Check-out</span><span class="inv-dv">'+fmtDT(b.checkOut)+'</span></div>'
+      + '<div class="inv-drow"><span class="inv-dk">Duration</span><span class="inv-dv">'+n+' night'+(n!==1?'s':'')+'</span></div>'
+      + guestRows
+    + '</div>'
+
+    /* CHARGES */
+    + '<div class="inv-s-charges">'
+      + '<div class="inv-hr"></div>'
+      + '<div class="inv-slabel">Charges</div>'
+      + '<table class="inv-tbl">'
+        + '<thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>'
+        + '<tbody>'
+          + '<tr><td>Accommodation &middot; '+n+' night'+(n!==1?'s':'')+'</td><td class="r">'+fmtC(accom)+'</td></tr>'
+          + extrasRows
+          + discRow
+        + '</tbody>'
+      + '</table>'
+
+      /* TOTALS */
+      + '<div class="inv-totals">'
+        + '<div class="inv-hr strong" style="margin-top:16px"></div>'
+        + '<div class="inv-hr" style="margin-top:2px;margin-bottom:0"></div>'
+        + '<div class="inv-trow total-row" style="margin-top:14px">'
+          + '<span class="inv-tlabel">Total</span>'
+          + '<span class="inv-tamount">'+fmtC(total)+'</span>'
+        + '</div>'
+        + '<div class="inv-deposit-rows">'+depositRows+'</div>'
+      + '</div>'
+    + '</div>'
+
+    /* PAYMENT INFO */
+    + '<div class="inv-s-payment" id="inv-pay-wrap" style="display:none">'
+      + '<div class="inv-hr"></div>'
+      + '<div class="inv-slabel">Payment Instructions</div>'
+      + '<div id="inv-pay-inner"></div>'
+    + '</div>'
+
+    /* FOOTER */
+    + '<div class="inv-footer">Thank you for choosing ARK.</div>';
+
+  // Disable deposit toggle if no deposit
   if(deposit === 0){
-    const btn = document.getElementById('togDeposit');
+    var btn = document.getElementById('togDeposit');
     btn.classList.add('off');
     btn.disabled = true;
     btn.style.opacity = '0.3';
     document.getElementById('inv').classList.add('hide-deposit');
   }
 
-  // Re-apply payment if already selected
+  // Re-apply payment section if already selected
   renderPaySection();
 }
 
-/* ── Init ── */
-window.onRoleReady = function(){
-  const id = new URLSearchParams(location.search).get('id');
-  if(!id){
-    document.getElementById('inv').innerHTML =
-      '<div style="padding:60px;text-align:center;font-family:var(--sans);font-size:13px;color:var(--ink-muted)">No booking ID. Open from a booking in the calendar.</div>';
-    return;
+/* ── WhatsApp / PDF share ── */
+function _loadScript(src){
+  return new Promise(function(resolve, reject){
+    if(document.querySelector('script[src="'+src+'"]')){ resolve(); return; }
+    var s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function shareWhatsApp(){
+  var btn = document.getElementById('waBtn');
+  var origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="margin-right:6px">⏳</span> Generating…';
+
+  try {
+    // Lazy-load html2pdf.js only when needed
+    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+
+    var el = document.getElementById('inv');
+    var filename = 'ARK-Invoice.pdf';
+
+    var pdfBlob = await html2pdf()
+      .set({
+        margin:     [14, 18, 14, 18],
+        filename:   filename,
+        image:      { type: 'jpeg', quality: 0.95 },
+        html2canvas:{ scale: 2, useCORS: true, logging: false },
+        jsPDF:      { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      })
+      .from(el)
+      .outputPdf('blob');
+
+    var file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+    // Try native share sheet (works on iOS/Android → picks WhatsApp)
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: 'ARK Invoice' });
+    } else {
+      // Desktop fallback: download the PDF
+      var url = URL.createObjectURL(pdfBlob);
+      var a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+    }
+  } catch(err){
+    if(err && err.name !== 'AbortError'){
+      console.error('[ARK] Share failed:', err);
+      alert('Could not generate PDF. Try Print · Save PDF instead.');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+}
+
+/* ── Bootstrap ── */
+(function init(){
+  var id = new URLSearchParams(location.search).get('id');
+
+  // Try localStorage payload (set by parent tab)
+  var raw = null;
+  try { raw = localStorage.getItem(DATA_KEY); } catch(e){}
+
+  if(raw){
+    try{
+      var payload = JSON.parse(raw);
+      // Validate that this payload matches the requested booking
+      if(payload.booking && payload.booking.id === id){
+        renderInvoice(payload.booking, payload.units || []);
+        // Restore saved payment config
+        var c = loadCfg();
+        document.getElementById('ip-name').value = c.ipName || '';
+        document.getElementById('ip-num').value  = c.ipNum  || '';
+        document.getElementById('bk-bank').value = c.bkBank || '';
+        document.getElementById('bk-name').value = c.bkName || '';
+        document.getElementById('bk-num').value  = c.bkNum  || '';
+        return;
+      }
+    } catch(e){}
   }
 
-  _booking = DB.getBookings().find(b => b.id === id);
-  if(!_booking){
-    document.getElementById('inv').innerHTML =
-      '<div style="padding:60px;text-align:center;font-family:var(--sans);font-size:13px;color:var(--ink-muted)">Booking not found.</div>';
-    return;
-  }
-
-  renderInvoice(_booking);
-
-  // Restore saved payment config
-  const c = loadCfg();
-  document.getElementById('ip-name').value = c.ipName  || '';
-  document.getElementById('ip-num').value  = c.ipNum   || '';
-  document.getElementById('bk-bank').value = c.bkBank  || '';
-  document.getElementById('bk-name').value = c.bkName  || '';
-  document.getElementById('bk-num').value  = c.bkNum   || '';
-};
+  // Fallback: no data available
+  document.getElementById('inv').innerHTML =
+    '<div style="padding:60px;text-align:center;font-family:var(--sans);font-size:13px;color:var(--ink-muted)">'
+    + (id ? 'Could not load booking data. Please close this tab and reopen the invoice from the booking.' : 'No booking ID. Open this page from a booking in the calendar.')
+    + '</div>';
+})();
 </script>
-<script>if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"))}</script>
+<script>if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js");});}</script>
 </body>
 </html>
