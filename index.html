@@ -230,7 +230,7 @@
     .mcal-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
     .mcal-months-grid{display:grid;gap:20px;}
     .mcal-months-grid.span-1{grid-template-columns:1fr;}
-    .mcal-months-grid.span-4{grid-template-columns:1fr 1fr;gap:20px 28px;}
+    .mcal-months-grid.span-4{grid-template-columns:1fr;gap:20px;}
     .mcal{border:0.5px solid var(--border);background:rgba(255,255,255,0.5);}
     .mcal-title{font-family:var(--display);font-size:10px;font-weight:400;letter-spacing:3px;text-transform:uppercase;color:var(--ink);padding:10px 14px;border-bottom:0.5px solid var(--border);}
     .mcal-header{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:0.5px solid var(--border);}
@@ -283,8 +283,7 @@
   <button class="week-today-btn" onclick="goToToday()">Today</button>
   <button class="week-nav-btn" onclick="navigateWeek(1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
   <div class="span-toggle">
-    <button class="span-btn active" id="btn-span-7"   onclick="setSpan(7)">Week</button>
-    <button class="span-btn"        id="btn-span-10"  onclick="setSpan(10)">10D</button>
+    <button class="span-btn active" id="btn-span-10"  onclick="setSpan(10)">10D</button>
     <button class="span-btn"        id="btn-span-30"  onclick="setSpan(30)">Month</button>
     <button class="span-btn"        id="btn-span-120" onclick="setSpan(120)">4 Mo</button>
   </div>
@@ -494,9 +493,10 @@ function renderSnapshot() {
 }
 
 /* ══════════ CALENDAR ══════════ */
-let currentWeekStart=getWeekStart(new Date());
+const _t0=new Date(); _t0.setHours(0,0,0,0);
+let currentWeekStart=_t0;
 let currentCalView='grid';
-let currentSpan=7; // 7 | 10 | 30 | 120
+let currentSpan=10; // 10 | 30 | 120
 
 function _showView(){
   const isMCal=currentSpan===30||currentSpan===120;
@@ -524,9 +524,9 @@ function setView(v){
 function setSpan(span){
   currentSpan=span;
   const d=new Date(currentWeekStart);
-  if(span===7)  currentWeekStart=getWeekStart(d);
-  else if(span===30||span===120) currentWeekStart=new Date(d.getFullYear(),d.getMonth(),1);
-  [7,10,30,120].forEach(s=>{ const b=document.getElementById('btn-span-'+s); if(b) b.classList.toggle('active',s===span); });
+  if(span===30||span===120) currentWeekStart=new Date(d.getFullYear(),d.getMonth(),1);
+  // span===10: keep currentWeekStart as-is (already today on init)
+  [10,30,120].forEach(s=>{ const b=document.getElementById('btn-span-'+s); if(b) b.classList.toggle('active',s===span); });
   _showView();
   _renderCurrentView();
 }
@@ -573,8 +573,7 @@ function navigateWeek(dir){
 }
 function goToToday(){
   const t=new Date(); t.setHours(0,0,0,0);
-  if(currentSpan===7) currentWeekStart=getWeekStart(t);
-  else if(currentSpan===10) currentWeekStart=t;
+  if(currentSpan===10) currentWeekStart=t;
   else currentWeekStart=new Date(t.getFullYear(),t.getMonth(),1);
   _renderCurrentView();
 }
@@ -713,30 +712,38 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
 
   // Find first Monday on or before the 1st
   const firstOfMonth=new Date(year,month,1);
-  const lastOfMonth=new Date(year,month+1,0);
   let wkStart=new Date(firstOfMonth);
   const dow=wkStart.getDay();
   wkStart.setDate(wkStart.getDate()-(dow===0?6:dow-1));
 
-  while(wkStart<=lastOfMonth){
+  // Month boundaries (for bar clamping and overflow-day blanking)
+  const monthStart=new Date(year,month,1);
+  const monthEnd=new Date(year,month+1,1); // exclusive
+
+  // Only show week rows that contain at least one day in this month
+  while(wkStart<monthEnd){
     const wkEnd=addDays(wkStart,7);
     const row=document.createElement('div'); row.className='mcal-week';
     row.style.minHeight=rowHeight+'px';
 
-    // Day cells
+    // Day cells — overflow days (from adjacent months) are blank/grey, no number
     for(let di=0;di<7;di++){
       const day=addDays(wkStart,di);
-      const isOther=day.getMonth()!==month;
-      const isToday=day.getTime()===today.getTime();
       const cell=document.createElement('div');
-      cell.className='mcal-day'+(isOther?' other-month':'')+(isToday?' today':'');
-      cell.innerHTML=`<span class="mcal-daynum">${day.getDate()}</span>`;
-      const ds=toDateStr(day);
-      cell.onclick=()=>openBookingModal(null,null,ds);
+      if(day.getMonth()!==month){
+        // Overflow day: empty grey placeholder, no interaction
+        cell.className='mcal-day other-month';
+      } else {
+        const isToday=day.getTime()===today.getTime();
+        cell.className='mcal-day'+(isToday?' today':'');
+        cell.innerHTML=`<span class="mcal-daynum">${day.getDate()}</span>`;
+        const ds=toDateStr(day);
+        cell.onclick=()=>openBookingModal(null,null,ds);
+      }
       row.appendChild(cell);
     }
 
-    // Event bars per unit
+    // Event bars per unit — clamped to both week and month boundaries
     units.forEach((unit,ui)=>{
       const top=TOP_PAD+ui*(BAR_H+BAR_GAP);
       const unitBookings=bookings.filter(b=>
@@ -745,20 +752,32 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
       );
       unitBookings.forEach(booking=>{
         const ci=new Date(booking.checkIn), co=new Date(booking.checkOut);
-        const startIdx=Math.max(0,Math.round((ci-wkStart)/86400000));
-        const endIdx  =Math.min(7,Math.round((co-wkStart)/86400000));
+
+        // Clamp bar to the visible (in-month) portion of this week
+        const barStart=Math.max(ci.getTime(),wkStart.getTime(),monthStart.getTime());
+        const barEnd  =Math.min(co.getTime(),wkEnd.getTime(),  monthEnd.getTime());
+        if(barEnd<=barStart) return;
+
+        const startIdx=Math.round((barStart-wkStart)/86400000);
+        const endIdx  =Math.round((barEnd  -wkStart)/86400000);
         if(endIdx<=startIdx) return;
 
-        const startsHere=ci>=wkStart, endsHere=co<=wkEnd;
-        const r=startsHere&&endsHere?'3px':startsHere?'3px 0 0 3px':endsHere?'0 3px 3px 0':'0';
+        // naturalStart/End: bar wasn't pushed by a month boundary
+        const naturalStart=ci.getTime()===barStart;
+        const naturalEnd  =co.getTime()===barEnd;
 
+        // Show guest name on first visible occurrence of this booking in this month
+        const firstInMonth=Math.max(ci.getTime(),monthStart.getTime());
+        const isFirstOccurrence=firstInMonth>=wkStart.getTime()&&firstInMonth<wkEnd.getTime();
+
+        const lR=naturalStart?'3px':'0', rR=naturalEnd?'3px':'0';
         const bar=document.createElement('div'); bar.className='mcal-event-bar';
-        bar.style.cssText=`left:calc(${startIdx/7*100}% + ${startsHere?2:0}px);`
-          +`width:calc(${(endIdx-startIdx)/7*100}% - ${(startsHere?2:0)+(endsHere?2:0)}px);`
-          +`top:${top}px;height:${BAR_H}px;background:${unit.color};border-radius:${r};`;
-        if(startsHere){
-          const label=booking.status==='blocked'?'Blocked':(booking.guestName||unit.name);
-          bar.textContent=label;
+        bar.style.cssText=`left:calc(${startIdx/7*100}% + ${naturalStart?2:0}px);`
+          +`width:calc(${(endIdx-startIdx)/7*100}% - ${(naturalStart?2:0)+(naturalEnd?2:0)}px);`
+          +`top:${top}px;height:${BAR_H}px;background:${unit.color};`
+          +`border-radius:${lR} ${rR} ${rR} ${lR};`;
+        if(isFirstOccurrence){
+          bar.textContent=booking.status==='blocked'?'Blocked':(booking.guestName||unit.name);
         }
         bar.onclick=e=>{ e.stopPropagation(); openBookingModal(booking); };
         row.appendChild(bar);
