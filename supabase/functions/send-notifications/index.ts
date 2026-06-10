@@ -126,31 +126,28 @@ Deno.serve(async () => {
   const today    = new Date().toISOString().split('T')[0]
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().split('T')[0]
 
-  const [{ data: bookings }, { data: cleaning }, { data: subs }] = await Promise.all([
+  const [{ data: bookings }, { data: subs }] = await Promise.all([
     supabase.from('bookings').select('status,payment_status,check_in,check_out').neq('status', 'cancelled'),
-    supabase.from('cleaning_tasks').select('id').eq('date', today).eq('status', 'pending'),
     supabase.from('push_subscriptions').select('id,endpoint,p256dh,auth'),
   ])
 
   const arrivals   = (bookings || []).filter(b => b.check_in?.startsWith(today)).length
   const departures = (bookings || []).filter(b => b.check_out?.startsWith(today)).length
-  const cleanings  = (cleaning || []).length
   const unpaidSoon = (bookings || []).filter(b =>
     b.status === 'confirmed' && b.payment_status === 'unpaid' &&
     b.check_in >= today && b.check_in <= tomorrow
   ).length
 
-  if (!arrivals && !departures && !cleanings && !unpaidSoon) {
+  if (!arrivals && !departures && !unpaidSoon) {
     return new Response(JSON.stringify({ sent: 0, reason: 'nothing today' }))
   }
 
   const parts: string[] = []
   if (arrivals)   parts.push(`${arrivals} arrival${arrivals   > 1 ? 's' : ''}`)
   if (departures) parts.push(`${departures} departure${departures > 1 ? 's' : ''}`)
-  if (cleanings)  parts.push(`${cleanings} cleaning${cleanings  > 1 ? 's' : ''} pending`)
   if (unpaidSoon) parts.push(`${unpaidSoon} unpaid booking${unpaidSoon > 1 ? 's' : ''} due soon`)
 
-  const count = arrivals + departures + cleanings + unpaidSoon
+  const count = arrivals + departures + unpaidSoon
 
   const payload = JSON.stringify({
     title: 'ARK OS · Today',

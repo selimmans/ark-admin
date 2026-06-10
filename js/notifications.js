@@ -73,13 +73,12 @@ function _updateBadge() {
 
   const arrivals   = bookings.filter(b => (b.checkIn  || '').startsWith(today)).length
   const departures = bookings.filter(b => (b.checkOut || '').startsWith(today)).length
-  const cleaning   = (window.DB?.getCleaning() || []).filter(c => c.date === today && c.status === 'pending').length
   const unpaidSoon = bookings.filter(b =>
     b.status === 'confirmed' && b.paymentStatus === 'unpaid' &&
     b.checkIn >= today && b.checkIn <= tomorrow
   ).length
 
-  const total = arrivals + departures + cleaning + unpaidSoon
+  const total = arrivals + departures + unpaidSoon
   if (total > 0) {
     navigator.setAppBadge(total).catch(() => {})
   } else {
@@ -104,7 +103,6 @@ function _notifyToday() {
 
   const arrivals    = bookings.filter(b => (b.checkIn  || '').startsWith(today)).length
   const departures  = bookings.filter(b => (b.checkOut || '').startsWith(today)).length
-  const cleaning    = (window.DB?.getCleaning() || []).filter(c => c.date === today && c.status === 'pending').length
   const unpaidSoon  = bookings.filter(b =>
     b.status === 'confirmed' && b.paymentStatus === 'unpaid' &&
     b.checkIn >= today && b.checkIn <= tomorrow
@@ -113,7 +111,6 @@ function _notifyToday() {
   const parts = []
   if (arrivals)   parts.push(`${arrivals} arrival${arrivals   > 1 ? 's' : ''}`)
   if (departures) parts.push(`${departures} departure${departures > 1 ? 's' : ''}`)
-  if (cleaning)   parts.push(`${cleaning} cleaning${cleaning  > 1 ? 's' : ''} pending`)
   if (unpaidSoon) parts.push(`${unpaidSoon} unpaid booking${unpaidSoon > 1 ? 's' : ''} due soon`)
 
   if (!parts.length) return
