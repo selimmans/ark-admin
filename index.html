@@ -137,7 +137,7 @@
     .status-chip.active.confirmed{background:#4A7A4A;border-color:#4A7A4A;} .status-chip.active.cancelled{background:var(--negative);border-color:var(--negative);} .status-chip.active.blocked{background:var(--ink-muted);border-color:var(--ink-muted);}
     .payment-toggle{display:flex;border:0.5px solid var(--border);overflow:hidden;}
     .payment-option{flex:1;padding:8px 10px;text-align:center;font-family:var(--sans);font-size:8px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--ink-muted);cursor:pointer;border-right:0.5px solid var(--border);transition:all 160ms ease;}
-    .payment-option:last-child{border-right:none;} .payment-option.active.unpaid{background:var(--negative);color:white;} .payment-option.active.paid{background:var(--positive);color:white;}
+    .payment-option:last-child{border-right:none;} .payment-option.active.unpaid{background:var(--negative);color:white;} .payment-option.active.deposit{background:#B07A30;color:white;} .payment-option.active.paid{background:var(--positive);color:white;}
 
     /* EXTRAS */
     .extras-list{display:flex;flex-direction:column;gap:5px;margin-bottom:7px;}
@@ -351,13 +351,14 @@
             <div class="pricing-row total"><span>Subtotal</span><span id="suggestedLabel">EGP 0</span></div>
             <div class="pricing-row"><span>Discount</span><input class="pricing-discount-input" type="number" id="f-discount" value="0" min="0" oninput="updatePricing()" /></div>
             <div class="pricing-row final"><span style="font-weight:400;color:var(--ink)">Total</span><input class="pricing-final-input" type="number" id="f-finalAmount" value="0" min="0" oninput="onTotalChange()" /></div>
+            <div class="pricing-row"><span style="color:var(--ink-muted)">Deposit</span><input class="pricing-discount-input" type="number" id="f-depositAmount" value="0" min="0" placeholder="0" /></div>
           </div>
         </div>
         <div class="form-divider"></div>
         <div class="form-section-label">Status</div>
-        <div class="form-group"><label class="form-label">Payment</label><div class="payment-toggle"><div class="payment-option unpaid active" id="payUnpaid" onclick="setPayment('unpaid')">Unpaid</div><div class="payment-option paid" id="payPaid" onclick="setPayment('paid')">Paid</div></div></div>
+        <div class="form-group"><label class="form-label">Payment</label><div class="payment-toggle"><div class="payment-option unpaid active" id="payUnpaid" onclick="setPayment('unpaid')">Unpaid</div><div class="payment-option deposit" id="payDeposit" onclick="setPayment('deposit')">Deposit</div><div class="payment-option paid" id="payPaid" onclick="setPayment('paid')">Paid</div></div></div>
         <div class="form-group" id="paidAtGroup" style="display:none"><label class="form-label">Date Paid</label><input class="form-input" type="date" id="f-paidAt" /></div>
-        <div class="form-group"><label class="form-label">Booking Status</label><div class="status-chips"><div class="status-chip active" data-status="pending" onclick="setStatus('pending')">Pending</div><div class="status-chip confirmed" data-status="confirmed" onclick="setStatus('confirmed')">Confirmed</div><div class="status-chip cancelled" data-status="cancelled" onclick="setStatus('cancelled')">Cancelled</div><div class="status-chip blocked" data-status="blocked" onclick="setStatus('blocked')">Blocked</div></div></div>
+        <div class="form-group"><label class="form-label">Booking Status</label><div class="status-chips"><div class="status-chip active" data-status="pending" onclick="setStatus('pending')">Pending</div><div class="status-chip confirmed" data-status="confirmed" onclick="setStatus('confirmed')">Confirmed</div><div class="status-chip cancelled" data-status="cancelled" onclick="setStatus('cancelled')">Cancelled</div></div></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="f-notes" placeholder="Any notes…"></textarea></div>
       </div>
     </div>
@@ -525,7 +526,7 @@ function setSpan(span){
   currentSpan=span;
   const d=new Date(currentWeekStart);
   if(span===30||span===120) currentWeekStart=new Date(d.getFullYear(),d.getMonth(),1);
-  // span===10: keep currentWeekStart as-is (already today on init)
+  else { const t=new Date(); t.setHours(0,0,0,0); currentWeekStart=t; } // 10D always starts from today
   [10,30,120].forEach(s=>{ const b=document.getElementById('btn-span-'+s); if(b) b.classList.toggle('active',s===span); });
   _showView();
   _renderCurrentView();
@@ -553,7 +554,7 @@ function renderListView(){
       </div>
       <div class="bcard-badges">
         <span class="bcard-badge ${b.status||'pending'}">${b.status||'Pending'}</span>
-        <span class="bcard-badge ${b.paymentStatus||'unpaid'}">${b.paymentStatus||'Unpaid'}</span>
+        <span class="bcard-badge ${b.paymentStatus||'unpaid'}">${{paid:'Paid',deposit:'Deposit',unpaid:'Unpaid'}[b.paymentStatus||'unpaid']||'Unpaid'}</span>
       </div>
     </div>`;
   });
@@ -809,6 +810,7 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
     document.getElementById('f-notes').value=booking.notes||'';
     document.getElementById('f-discount').value=booking.discountAmount||0;
     document.getElementById('f-finalAmount').value=booking.finalAmount||0;
+    document.getElementById('f-depositAmount').value=booking.depositAmount||0;
     const[id,it]=(booking.checkIn||'').split('T'); const[od,ot]=(booking.checkOut||'').split('T');
     document.getElementById('f-checkInDate').value=id||''; document.getElementById('f-checkInTime').value=it?it.substr(0,5):'14:00';
     document.getElementById('f-checkOutDate').value=od||''; document.getElementById('f-checkOutTime').value=ot?ot.substr(0,5):'11:00';
@@ -820,7 +822,7 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
     renderExtrasList(booking.extras||[]);
   } else {
     ['f-guestName','f-phone','f-source','f-notes'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('f-discount').value=0; document.getElementById('f-finalAmount').value=0;
+    document.getElementById('f-discount').value=0; document.getElementById('f-finalAmount').value=0; document.getElementById('f-depositAmount').value=0;
     document.getElementById('f-checkInDate').value=preDate||toDateStr(new Date()); document.getElementById('f-checkInTime').value='14:00';
     document.getElementById('f-checkOutDate').value=''; document.getElementById('f-checkOutTime').value='11:00';
     selectedUnits=preUnit?new Set([preUnit]):new Set();
@@ -869,7 +871,11 @@ function addCustomTag(){
 
 function renderStatusChips(){ document.querySelectorAll('.status-chip').forEach(c=>c.classList.toggle('active',c.dataset.status===selectedStatus)); }
 function setStatus(s){ selectedStatus=s; renderStatusChips(); }
-function renderPaymentToggle(){ document.getElementById('payUnpaid').classList.toggle('active',selectedPayment==='unpaid'); document.getElementById('payPaid').classList.toggle('active',selectedPayment==='paid'); }
+function renderPaymentToggle(){
+  document.getElementById('payUnpaid').classList.toggle('active',selectedPayment==='unpaid');
+  document.getElementById('payDeposit').classList.toggle('active',selectedPayment==='deposit');
+  document.getElementById('payPaid').classList.toggle('active',selectedPayment==='paid');
+}
 function setPayment(s){
   selectedPayment=s; renderPaymentToggle();
   const group=document.getElementById('paidAtGroup');
@@ -958,6 +964,7 @@ function buildBookingFromForm(){
     extras:getExtrasFromForm(), baseAmount:0,
     discountAmount:parseFloat(document.getElementById('f-discount').value)||0,
     finalAmount:parseFloat(document.getElementById('f-finalAmount').value)||0,
+    depositAmount:parseFloat(document.getElementById('f-depositAmount').value)||0,
     paymentStatus:selectedPayment, status:selectedStatus, paidAt,
     source:document.getElementById('f-source').value.trim(),
     tags:[...selectedTags],

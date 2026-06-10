@@ -15,7 +15,7 @@ function bookingToRow(b) {
     discount_amount: b.discountAmount, final_amount: b.finalAmount,
     payment_status: b.paymentStatus, status: b.status, source: b.source,
     tags: b.tags, override_conflict: b.overrideConflict, notes: b.notes,
-    paid_at: b.paidAt || null,
+    paid_at: b.paidAt || null, deposit_amount: b.depositAmount || 0,
     access_token: b.accessToken || null,
   }
 }
@@ -27,7 +27,7 @@ function rowToBooking(r) {
     discountAmount: r.discount_amount || 0, finalAmount: r.final_amount || 0,
     paymentStatus: r.payment_status, status: r.status, source: r.source,
     tags: r.tags || [], overrideConflict: r.override_conflict, notes: r.notes,
-    paidAt: r.paid_at || null, createdAt: r.created_at,
+    paidAt: r.paid_at || null, depositAmount: r.deposit_amount || 0, createdAt: r.created_at,
     accessToken: r.access_token || null,
   }
 }

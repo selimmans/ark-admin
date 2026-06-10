@@ -132,6 +132,7 @@
 .bcard-badge.cancelled { color: var(--negative); border-color: rgba(138,74,74,0.4); background: rgba(138,74,74,0.08); }
 .bcard-badge.blocked   { color: var(--ink-muted); border-color: var(--border); background: transparent; }
 .bcard-badge.paid      { color: #4A7A4A; border-color: rgba(74,122,74,0.4); background: rgba(74,122,74,0.08); }
+.bcard-badge.deposit   { color: #B07A30; border-color: rgba(176,122,48,0.4); background: rgba(176,122,48,0.08); }
 .bcard-badge.unpaid    { color: var(--negative); border-color: rgba(138,74,74,0.4); background: rgba(138,74,74,0.08); }
 .bcard-date-group {
   padding: 8px 16px 4px;
