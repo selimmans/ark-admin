@@ -906,8 +906,10 @@ function updatePricing(){
   document.getElementById('cleaningLabel').textContent=fmtCurrency(p.clean);
   document.getElementById('extrasLabel').textContent=fmtCurrency(p.extTotal);
   document.getElementById('suggestedLabel').textContent=fmtCurrency(p.subtotal);
-  // Update total = subtotal - discount (only if user hasn't typed a custom total)
-  document.getElementById('f-finalAmount').value=Math.round(p.suggested);
+  // Only auto-fill Total for NEW bookings — preserve the saved amount when editing
+  if(!editingBookingId){
+    document.getElementById('f-finalAmount').value=Math.round(p.suggested);
+  }
 }
 
 // When user edits the Total field directly, back-calculate the discount

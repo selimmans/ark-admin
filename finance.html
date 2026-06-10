@@ -315,42 +315,41 @@
 
 <div class="page">
 
-  <!-- MONTH FILTER -->
-  <div class="filter-bar" style="margin-bottom:28px">
-    <span class="filter-label">Viewing</span>
-    <select class="filter-select" id="monthFilter" onchange="render()"></select>
-  </div>
-
-  <!-- REVENUE SUMMARY -->
+  <!-- REVENUE SUMMARY — cash basis (paid = finalAmount by paidAt, deposit = depositAmount by checkIn) -->
   <div id="revenue-section">
-  <div class="section-header">
-    <span class="section-title">Revenue</span>
+  <div class="section-header" style="margin-top:0">
+    <span class="section-title">Revenue Collected</span>
     <div class="section-line"></div>
   </div>
   <div class="summary-cards">
     <div class="summary-card">
-      <div class="card-label">Revenue This Month</div>
-      <div class="card-value positive" id="c-revenueMonth">EGP 0</div>
-      <div class="card-sub" id="c-revenueMonthSub">0 confirmed bookings</div>
+      <div class="card-label">This Year</div>
+      <div class="card-value positive" id="c-collectedYear">EGP 0</div>
+      <div class="card-sub" id="c-collectedYearSub">—</div>
     </div>
     <div class="summary-card">
-      <div class="card-label">Next 30 Days</div>
-      <div class="card-value" id="c-revenueNext30">EGP 0</div>
-      <div class="card-sub" id="c-revenueNext30Sub">Confirmed upcoming</div>
+      <div class="card-label">This Month</div>
+      <div class="card-value positive" id="c-collectedMonth">EGP 0</div>
+      <div class="card-sub" id="c-collectedMonthSub">—</div>
     </div>
     <div class="summary-card">
-      <div class="card-label">Outstanding</div>
-      <div class="card-value warning" id="c-outstanding">EGP 0</div>
-      <div class="card-sub" id="c-outstandingSub">Upcoming, unpaid</div>
+      <div class="card-label">Outstanding · 30 Days</div>
+      <div class="card-value warning" id="c-out30">EGP 0</div>
+      <div class="card-sub" id="c-out30Sub">Unpaid check-ins next 30 days</div>
     </div>
     <div class="summary-card">
-      <div class="card-label">Extras This Month</div>
-      <div class="card-value" id="c-extras">EGP 0</div>
-      <div class="card-sub">From confirmed bookings</div>
+      <div class="card-label">Outstanding · 12 Months</div>
+      <div class="card-value warning" id="c-out12">EGP 0</div>
+      <div class="card-sub" id="c-out12Sub">Unpaid check-ins next 12 months</div>
     </div>
   </div>
-
   </div><!-- /revenue-section -->
+
+  <!-- EXPENSES FILTER -->
+  <div class="filter-bar" style="margin-top:40px;margin-bottom:0">
+    <span class="filter-label">Expenses Period</span>
+    <select class="filter-select" id="monthFilter" onchange="render()"></select>
+  </div>
 
   <!-- COSTS -->
   <div class="section-header" style="margin-top:44px">
@@ -394,15 +393,15 @@
   </div>
   <div class="net-summary">
     <div class="net-row">
-      <span>Revenue This Month</span>
+      <span id="n-revenue-label">Collected This Month</span>
       <span class="net-amount positive" id="n-revenue">EGP 0</span>
     </div>
     <div class="net-row">
-      <span>Expenses This Month</span>
+      <span id="n-costs-label">Expenses This Month</span>
       <span class="net-amount negative" id="n-costs">EGP 0</span>
     </div>
     <div class="net-row total">
-      <span>Net This Month</span>
+      <span id="n-net-label">Net This Month</span>
       <span class="net-amount" id="n-net">EGP 0</span>
     </div>
   </div>
@@ -520,31 +519,51 @@ function isInMonth(dateStr, ym) {
 }
 
 /* ══════════════════════════════════════════════════════
-   REVENUE AGGREGATION
+   CASH-BASIS REVENUE AGGREGATION
+   • paid    → finalAmount,   dated by paidAt
+   • deposit → depositAmount, dated by checkIn (no depositPaidAt yet)
+   • unpaid  → nothing collected, full finalAmount is outstanding
 ══════════════════════════════════════════════════════ */
-function getMonthRevenue(ym) {
-  // Revenue is recognised when payment is received (paidAt), not when the stay occurs
-  const paid = DB.getBookings().filter(b =>
-    b.status !== 'cancelled' && b.paidAt && b.paidAt.startsWith(ym)
-  );
-  const revenue       = paid.reduce((s, b) => s + (b.finalAmount || 0), 0);
-  const extrasRevenue = paid.reduce((s, b) => s + (b.extras || []).reduce((x, e) => x + (e.price || 0), 0), 0);
-  return { revenue, count: paid.length, extrasRevenue, bookings: paid };
+
+// Amount already collected for a booking
+function collectedAmount(b) {
+  if (b.paymentStatus === 'paid')    return b.finalAmount    || 0;
+  if (b.paymentStatus === 'deposit') return b.depositAmount  || 0;
+  return 0;
 }
 
-function getNext30Revenue() {
-  const now     = new Date();
-  const future  = new Date(now); future.setDate(future.getDate() + 30);
-  return DB.getBookings()
-    .filter(b => b.status === 'confirmed' && new Date(b.checkIn) >= now && new Date(b.checkIn) <= future)
-    .reduce((s, b) => s + (b.finalAmount || 0), 0);
+// Amount still owed for a booking
+function outstandingAmount(b) {
+  if (b.paymentStatus === 'paid') return 0;
+  const deposited = b.paymentStatus === 'deposit' ? (b.depositAmount || 0) : 0;
+  return Math.max(0, (b.finalAmount || 0) - deposited);
 }
 
-function getOutstanding() {
-  const today = new Date().toISOString().split('T')[0]
-  return DB.getBookings()
-    .filter(b => b.status === 'confirmed' && b.paymentStatus === 'unpaid' && (b.checkOut || '') >= today)
-    .reduce((s, b) => s + (b.finalAmount || 0), 0);
+// "Collection date" for a booking (paidAt for paid; checkIn for deposit)
+function collectionDate(b) {
+  if (b.paymentStatus === 'paid')    return b.paidAt   || null;
+  if (b.paymentStatus === 'deposit') return b.checkIn  || null;
+  return null;
+}
+
+// All non-cancelled bookings that have money collected, whose collection date falls in [prefix]
+function collectedInPeriod(prefix) {
+  return DB.getBookings().filter(b => {
+    if (b.status === 'cancelled') return false;
+    const d = collectionDate(b);
+    return d && d.startsWith(prefix);
+  });
+}
+
+// Outstanding bookings with checkIn within [days] days from today
+function outstandingInDays(days) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const limit = new Date(today); limit.setDate(limit.getDate() + days);
+  return DB.getBookings().filter(b => {
+    if (b.status === 'cancelled' || b.paymentStatus === 'paid') return false;
+    const ci = new Date(b.checkIn);
+    return ci >= today && ci <= limit;
+  });
 }
 
 function getMonthCosts(ym) {
@@ -557,23 +576,46 @@ function getMonthCosts(ym) {
    RENDER
 ══════════════════════════════════════════════════════ */
 function render() {
-  const ym = getSelectedMonth();
-  const { revenue, count, extrasRevenue } = getMonthRevenue(ym);
-  const outstanding = getOutstanding();
-  const next30      = getNext30Revenue();
-  const costsTotal  = getMonthCosts(ym);
-  const net         = revenue - costsTotal;
+  const now = new Date();
+  const currentYear  = String(now.getFullYear());
+  const currentMonth = toYM(now);
+  const ym           = getSelectedMonth();  // for expenses table + net summary
 
-  document.getElementById('c-revenueMonth').textContent    = fmtCurrency(revenue);
-  document.getElementById('c-revenueMonthSub').textContent = count + ' paid booking' + (count !== 1 ? 's' : '');
-  document.getElementById('c-revenueNext30').textContent   = fmtCurrency(next30);
-  const n30from = new Date(); const n30to = new Date(); n30to.setDate(n30to.getDate()+30);
-  const fmtShort = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  document.getElementById('c-revenueNext30Sub').textContent = fmtShort(n30from) + ' – ' + fmtShort(n30to);
-  document.getElementById('c-outstanding').textContent     = fmtCurrency(outstanding);
-  document.getElementById('c-extras').textContent          = fmtCurrency(extrasRevenue);
+  // ── Collected This Year ──
+  const yearBookings  = collectedInPeriod(currentYear);
+  const collectedYear = yearBookings.reduce((s, b) => s + collectedAmount(b), 0);
+  document.getElementById('c-collectedYear').textContent    = fmtCurrency(collectedYear);
+  document.getElementById('c-collectedYearSub').textContent = yearBookings.length + ' booking' + (yearBookings.length !== 1 ? 's' : '') + ' collected';
 
-  document.getElementById('n-revenue').textContent = fmtCurrency(revenue);
+  // ── Collected This Month ──
+  const monthBookings  = collectedInPeriod(currentMonth);
+  const collectedMonth = monthBookings.reduce((s, b) => s + collectedAmount(b), 0);
+  document.getElementById('c-collectedMonth').textContent    = fmtCurrency(collectedMonth);
+  document.getElementById('c-collectedMonthSub').textContent = monthBookings.length + ' booking' + (monthBookings.length !== 1 ? 's' : '') + ' collected';
+
+  // ── Outstanding · 30 days ──
+  const out30 = outstandingInDays(30);
+  const out30Total = out30.reduce((s, b) => s + outstandingAmount(b), 0);
+  document.getElementById('c-out30').textContent    = fmtCurrency(out30Total);
+  document.getElementById('c-out30Sub').textContent = out30.length + ' booking' + (out30.length !== 1 ? 's' : '') + ' checking in';
+
+  // ── Outstanding · 12 months ──
+  const out12 = outstandingInDays(365);
+  const out12Total = out12.reduce((s, b) => s + outstandingAmount(b), 0);
+  document.getElementById('c-out12').textContent    = fmtCurrency(out12Total);
+  document.getElementById('c-out12Sub').textContent = out12.length + ' booking' + (out12.length !== 1 ? 's' : '') + ' checking in';
+
+  // ── Net Summary (uses expenses-period filter) ──
+  const filterBookings = collectedInPeriod(ym);
+  const filterRevenue  = filterBookings.reduce((s, b) => s + collectedAmount(b), 0);
+  const costsTotal     = getMonthCosts(ym);
+  const net            = filterRevenue - costsTotal;
+  const ymLabel        = fmtMonthLabel(ym);
+
+  document.getElementById('n-revenue-label').textContent = 'Collected · ' + ymLabel;
+  document.getElementById('n-costs-label').textContent   = 'Expenses · '  + ymLabel;
+  document.getElementById('n-net-label').textContent     = 'Net · '       + ymLabel;
+  document.getElementById('n-revenue').textContent = fmtCurrency(filterRevenue);
   document.getElementById('n-costs').textContent   = '− ' + fmtCurrency(costsTotal);
   const netEl = document.getElementById('n-net');
   netEl.textContent = fmtCurrency(Math.abs(net));

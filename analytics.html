@@ -238,6 +238,18 @@ function getMonthStr(){
   return `${y}-${m}`;
 }
 
+/* ══════════ CASH-BASIS HELPERS (mirrors finance.html) ══════════ */
+function collectedAmount(b){
+  if(b.paymentStatus==='paid')    return b.finalAmount   ||0;
+  if(b.paymentStatus==='deposit') return b.depositAmount ||0;
+  return 0;
+}
+function collectionDate(b){
+  if(b.paymentStatus==='paid')    return b.paidAt   ||null;
+  if(b.paymentStatus==='deposit') return b.checkIn  ||null;
+  return null;
+}
+
 /* ══════════ RENDER ══════════ */
 function render(){
   const monthStr=getMonthStr();
@@ -246,26 +258,30 @@ function render(){
   const mEnd=new Date(parseInt(y),parseInt(m),1);
   const bookings=DB.getBookings().filter(b=>b.status!=='cancelled');
 
-  // Date-overlap: used for occupancy (when did guests stay?)
+  // Date-overlap: used for occupancy (when did guests actually stay?)
   const monthBookings=bookings.filter(b=>{
     if(!b.checkIn||!b.checkOut) return false;
     return new Date(b.checkIn)<mEnd && new Date(b.checkOut)>mStart;
   });
 
-  // Payment-date: used for revenue (when was money received?)
-  const paidInMonth=bookings.filter(b=>b.paidAt&&b.paidAt.startsWith(monthStr));
+  // Cash-basis: money received in this month
+  // paid → paidAt in month; deposit → checkIn in month (proxy)
+  const collectedInMonth=bookings.filter(b=>{
+    const d=collectionDate(b);
+    return d&&d.startsWith(monthStr);
+  });
 
-  renderMetrics(monthStr, paidInMonth, monthBookings);
+  renderMetrics(monthStr, collectedInMonth, monthBookings);
   renderOccupancy(monthStr, monthBookings);
-  renderRevenue(monthStr, paidInMonth);
-  renderExtras(monthStr, paidInMonth);
-  renderNet(monthStr, paidInMonth);
+  renderRevenue(monthStr, collectedInMonth);
+  renderExtras(monthStr, collectedInMonth);
+  renderNet(monthStr, collectedInMonth);
 }
 
 /* ══════════ METRICS ══════════ */
-function renderMetrics(monthStr, paidInMonth, monthBookings){
-  // Revenue = sum of bookings paid in this month
-  const revenue = paidInMonth.reduce((s,b)=>s+(b.finalAmount||0),0);
+function renderMetrics(monthStr, collectedInMonth, monthBookings){
+  // Revenue = cash collected in this month (paid by paidAt + deposits by checkIn)
+  const revenue = collectedInMonth.reduce((s,b)=>s+collectedAmount(b),0);
 
   // Avg booking length — date-overlap bookings (occupancy-based)
   const lengthBookings = monthBookings.filter(b=>b.checkIn&&b.checkOut);
@@ -276,12 +292,12 @@ function renderMetrics(monthStr, paidInMonth, monthBookings){
       },0)/lengthBookings.length
     : 0;
 
-  // Revenue per night (paid revenue / total booked nights this month)
+  // Revenue per night (collected revenue / total booked nights this month)
   const totalNights = monthBookings.reduce((s,b)=>s+nightsInMonth(b.checkIn,b.checkOut,monthStr),0);
   const revPerNight = totalNights>0 ? revenue/totalNights : 0;
 
-  // Total paid bookings this month
-  const totalBookings = paidInMonth.length;
+  // Total bookings with money collected this month
+  const totalBookings = collectedInMonth.length;
 
   document.getElementById('metricsRow').innerHTML=`
     <div class="metric-card">
@@ -318,7 +334,7 @@ function renderOccupancy(monthStr, monthBookings){
     const unitBookings=monthBookings.filter(b=>(b.accommodations||[]).includes(u.id));
     const bookedNights=unitBookings.reduce((s,b)=>s+nightsInMonth(b.checkIn,b.checkOut,monthStr),0);
     const pct=Math.min(100,Math.round((bookedNights/daysTotal)*100));
-    const rev=unitBookings.reduce((s,b)=>s+(b.finalAmount||0)/Math.max(1,(b.accommodations||[]).length),0);
+    const rev=unitBookings.reduce((s,b)=>s+collectedAmount(b)/Math.max(1,(b.accommodations||[]).length),0);
     rows+=`<tr>
       <td><div class="unit-cell"><div class="unit-dot" style="background:${u.color}"></div>${u.name}</div></td>
       <td><div class="bar-wrap">
@@ -336,15 +352,15 @@ function renderOccupancy(monthStr, monthBookings){
 }
 
 /* ══════════ REVENUE BY UNIT ══════════ */
-function renderRevenue(monthStr, monthBookings){
+function renderRevenue(monthStr, collectedInMonth){
   const units=getAllUnits().filter(u=>u.active);
   if(!units.length){ document.getElementById('revTable').innerHTML='<div class="empty-note">No active units.</div>'; return; }
 
-  // Build unit revenue map — split shared bookings evenly
+  // Build unit revenue map using cash-basis amounts, split shared bookings evenly
   const unitRev={};
   units.forEach(u=>unitRev[u.id]=0);
-  monthBookings.forEach(b=>{
-    const share=(b.finalAmount||0)/Math.max(1,(b.accommodations||[]).length);
+  collectedInMonth.forEach(b=>{
+    const share=collectedAmount(b)/Math.max(1,(b.accommodations||[]).length);
     (b.accommodations||[]).forEach(uid=>{ if(unitRev[uid]!==undefined) unitRev[uid]+=share; });
   });
   const maxRev=Math.max(...Object.values(unitRev),1);
@@ -368,9 +384,9 @@ function renderRevenue(monthStr, monthBookings){
 }
 
 /* ══════════ EXTRAS ══════════ */
-function renderExtras(monthStr, monthBookings){
+function renderExtras(monthStr, collectedInMonth){
   const extraMap={};
-  monthBookings.forEach(b=>{
+  collectedInMonth.forEach(b=>{
     (b.extras||[]).forEach(e=>{
       if(!e.name) return;
       if(!extraMap[e.name]) extraMap[e.name]={count:0,revenue:0};
@@ -391,8 +407,8 @@ function renderExtras(monthStr, monthBookings){
 }
 
 /* ══════════ NET SUMMARY ══════════ */
-function renderNet(monthStr, paidInMonth){
-  const revenue=paidInMonth.reduce((s,b)=>s+(b.finalAmount||0),0);
+function renderNet(monthStr, collectedInMonth){
+  const revenue=collectedInMonth.reduce((s,b)=>s+collectedAmount(b),0);
   const costs=DB.getCosts().filter(c=>c.date&&c.date.startsWith(monthStr));
   const totalCosts=costs.reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
   const net=revenue-totalCosts;
