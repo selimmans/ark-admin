@@ -110,49 +110,60 @@ async function _replayQueue() {
     try { await window.DB[op.method](op.arg) }
     catch(e) { console.error(`[ARK] Failed to replay ${op.method}:`, e) }
   }
-  if (typeof window.onDataChange === 'function') window.onDataChange()
+  _fireDataChange()
 }
 
 window.addEventListener('online', _replayQueue)
 
 // ─── DB object ────────────────────────────────────────────────────────────
 
-const _CACHE_KEY = 'ark_db_v1'
+const _CACHE_KEY  = 'ark_db_v1'
+const _CACHE_TTL  = 2 * 60 * 1000   // 2 minutes — skip background fetch if fresher
+
+// Debounced onDataChange: batch rapid realtime events into a single render
+let _dcTimer = null
+function _fireDataChange() {
+  clearTimeout(_dcTimer)
+  _dcTimer = setTimeout(() => { if (typeof window.onDataChange === 'function') window.onDataChange() }, 80)
+}
 
 window.DB = {
   _bookings: [], _expenses: [], _tasks: [], _extras: [], _units: [],
 
   async load() {
-    // 1. Try localStorage cache — always use it if present, regardless of age.
-    //    This makes every page navigation instant.
+    // 1. Try localStorage cache — use it instantly if present.
     let hasCache = false
+    let cacheAge = Infinity
     try {
       const raw = localStorage.getItem(_CACHE_KEY)
       if (raw) {
-        const { d } = JSON.parse(raw)
+        const { ts, d } = JSON.parse(raw)
         if (d && Array.isArray(d.bookings) && d.bookings.length > 0) {
           this._bookings = d.bookings
           this._expenses = d.expenses || []
           this._tasks    = d.tasks    || []
           this._extras   = d.extras   || []
           this._units    = d.units    || []
-          hasCache = true
+          hasCache  = true
+          cacheAge  = Date.now() - (ts || 0)
         }
       }
     } catch (_) {}
 
     if (!hasCache) {
-      // First-ever load (no cache) — must fetch synchronously before rendering
+      // First-ever load — must fetch before rendering
       await this._fetchAll()
       this.setupRealtime()
       return
     }
 
-    // 2. Render immediately from cache, then background-refresh once per load
+    // 2. Render instantly from cache.
+    //    Only background-refresh if cache is stale (> 2 min).
+    //    Realtime subscription keeps data live within that window.
     this.setupRealtime()
-    if (navigator.onLine) {
+    if (navigator.onLine && cacheAge > _CACHE_TTL) {
       this._fetchAll()
-        .then(() => { if (typeof window.onDataChange === 'function') window.onDataChange() })
+        .then(() => _fireDataChange())
         .catch(err => console.error('[ARK] Background fetch failed:', err))
     }
   },
@@ -320,9 +331,9 @@ window.DB = {
   setupRealtime() {
     const self = this
     const make = (mapper, arr) => ({
-      INSERT: ({ new: r }) => { const item = mapper(r); if (!self[arr].find(x => x.id === item.id)) self[arr].unshift(item); window.onDataChange?.() },
-      UPDATE: ({ new: r }) => { const item = mapper(r); const i = self[arr].findIndex(x => x.id === item.id); if (i >= 0) self[arr][i] = item; else self[arr].unshift(item); window.onDataChange?.() },
-      DELETE: ({ old: r }) => { self[arr] = self[arr].filter(x => x.id !== r.id); window.onDataChange?.() },
+      INSERT: ({ new: r }) => { const item = mapper(r); if (!self[arr].find(x => x.id === item.id)) self[arr].unshift(item); _fireDataChange() },
+      UPDATE: ({ new: r }) => { const item = mapper(r); const i = self[arr].findIndex(x => x.id === item.id); if (i >= 0) self[arr][i] = item; else self[arr].unshift(item); _fireDataChange() },
+      DELETE: ({ old: r }) => { self[arr] = self[arr].filter(x => x.id !== r.id); _fireDataChange() },
     })
     const b = make(rowToBooking, '_bookings')
     const e = make(rowToExpense, '_expenses')
