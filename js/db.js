@@ -130,7 +130,7 @@ window.DB = {
       const raw = localStorage.getItem(_CACHE_KEY)
       if (raw) {
         const { d } = JSON.parse(raw)
-        if (d && Array.isArray(d.bookings)) {
+        if (d && Array.isArray(d.bookings) && d.bookings.length > 0) {
           this._bookings = d.bookings
           this._expenses = d.expenses || []
           this._tasks    = d.tasks    || []
