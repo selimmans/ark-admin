@@ -117,10 +117,9 @@ window.addEventListener('online', _replayQueue)
 
 // ─── DB object ────────────────────────────────────────────────────────────
 
-const _CACHE_KEY  = 'ark_db_v1'
-const _CACHE_TTL  = 2 * 60 * 1000   // 2 minutes — skip background fetch if fresher
+const _CACHE_KEY = 'ark_db_v1'
 
-// Debounced onDataChange: batch rapid realtime events into a single render
+// Debounced render trigger — collapses rapid realtime events into one render
 let _dcTimer = null
 function _fireDataChange() {
   clearTimeout(_dcTimer)
@@ -131,41 +130,28 @@ window.DB = {
   _bookings: [], _expenses: [], _tasks: [], _extras: [], _units: [],
 
   async load() {
-    // 1. Try localStorage cache — use it instantly if present.
-    let hasCache = false
-    let cacheAge = Infinity
+    // If cache exists → use it and stop. Realtime handles live updates.
+    // If no cache → fetch once from Supabase, then start realtime.
+    // No background refresh. No double render. No glitch.
     try {
       const raw = localStorage.getItem(_CACHE_KEY)
       if (raw) {
-        const { ts, d } = JSON.parse(raw)
+        const { d } = JSON.parse(raw)
         if (d && Array.isArray(d.bookings) && d.bookings.length > 0) {
           this._bookings = d.bookings
           this._expenses = d.expenses || []
           this._tasks    = d.tasks    || []
           this._extras   = d.extras   || []
           this._units    = d.units    || []
-          hasCache  = true
-          cacheAge  = Date.now() - (ts || 0)
+          this.setupRealtime()
+          return
         }
       }
     } catch (_) {}
 
-    if (!hasCache) {
-      // First-ever load — must fetch before rendering
-      await this._fetchAll()
-      this.setupRealtime()
-      return
-    }
-
-    // 2. Render instantly from cache.
-    //    Only background-refresh if cache is stale (> 2 min).
-    //    Realtime subscription keeps data live within that window.
+    // No usable cache — fetch fresh, then go live
+    await this._fetchAll()
     this.setupRealtime()
-    if (navigator.onLine && cacheAge > _CACHE_TTL) {
-      this._fetchAll()
-        .then(() => _fireDataChange())
-        .catch(err => console.error('[ARK] Background fetch failed:', err))
-    }
   },
 
   async _fetchAll() {
