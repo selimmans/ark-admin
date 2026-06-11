@@ -165,18 +165,29 @@ window.DB = {
       window._db.from('extras').select('*').order('name'),
       window._db.from('units').select('*').order('sort_order'),
     ])
-    // Surface errors so we know when Supabase rejects a query
     if (b.error) console.error('[ARK] bookings fetch error:', b.error.message)
     if (e.error) console.error('[ARK] expenses fetch error:', e.error.message)
     if (t.error) console.error('[ARK] tasks fetch error:', t.error.message)
     if (x.error) console.error('[ARK] extras fetch error:', x.error.message)
     if (u.error) console.error('[ARK] units fetch error:', u.error.message)
-    // Only overwrite in-memory arrays if the query succeeded (has data)
-    if (b.data) this._bookings = b.data.map(rowToBooking)
-    if (e.data) this._expenses = e.data.map(rowToExpense)
-    if (t.data) this._tasks    = t.data.map(rowToTask)
-    if (x.data) this._extras   = x.data.map(rowToExtra)
-    if (u.data) this._units    = u.data.map(rowToUnit)
+
+    // Guard: if the bookings query failed OR returned fewer rows than we already
+    // have in memory, this is almost certainly an auth-token hiccup mid-navigation
+    // (Supabase returns [] with no error when the session hasn't refreshed yet).
+    // Keep the existing cache — don't wipe good data with a bad result.
+    const freshCount  = b.data ? b.data.length  : -1
+    const cachedCount = this._bookings.length
+    if (b.error || freshCount < 0 || (freshCount === 0 && cachedCount > 0)) {
+      console.warn('[ARK] _fetchAll skipped cache update — bookings result looks wrong',
+                   { freshCount, cachedCount, error: b.error?.message })
+      return
+    }
+
+    this._bookings = b.data.map(rowToBooking)
+    if (!e.error && e.data) this._expenses = e.data.map(rowToExpense)
+    if (!t.error && t.data) this._tasks    = t.data.map(rowToTask)
+    if (!x.error && x.data) this._extras   = x.data.map(rowToExtra)
+    if (!u.error && u.data) this._units    = u.data.map(rowToUnit)
     this._saveCache()
   },
 
