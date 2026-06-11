@@ -1,4 +1,4 @@
-const CACHE   = 'ark-os-v9'
+const CACHE   = 'ark-os-v10'
 const BASE_URL = 'https://selimmans.github.io/ark-admin'
 
 const SHELL = [
@@ -40,31 +40,47 @@ self.addEventListener('activate', e => {
   )
 })
 
-// Fetch: cache-first for shell, network-only for Supabase API
+// Fetch strategy:
+//   .html + .js  → network-first  (always fresh code when online, cache fallback offline)
+//   everything else → cache-first (fonts, CSS, icons load instantly)
+//   Supabase API  → network-only  (db.js handles offline queuing)
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return
 
   const url = new URL(e.request.url)
 
-  // Let Supabase API calls go straight to network — db.js handles offline queuing
+  // Supabase API — bypass SW entirely
   if (url.hostname.includes('supabase.co')) return
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) {
-        // Serve from cache immediately, update in background
-        fetch(e.request).then(fresh => {
-          if (fresh.ok) caches.open(CACHE).then(c => c.put(e.request, fresh))
-        }).catch(() => {})
-        return cached
-      }
-      // Not in cache — fetch and cache it
-      return fetch(e.request).then(r => {
-        if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()))
-        return r
-      }).catch(() => caches.match('./index.html')) // offline fallback
-    })
-  )
+  const isCode = url.pathname.endsWith('.html') || url.pathname.endsWith('.js')
+
+  if (isCode) {
+    // Network-first: always try to get fresh code, fall back to cache when offline
+    e.respondWith(
+      fetch(e.request)
+        .then(r => {
+          if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()))
+          return r
+        })
+        .catch(() => caches.match(e.request).then(c => c || caches.match('./index.html')))
+    )
+  } else {
+    // Cache-first: fonts, CSS, icons — serve instantly, refresh in background
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) {
+          fetch(e.request).then(fresh => {
+            if (fresh.ok) caches.open(CACHE).then(c => c.put(e.request, fresh))
+          }).catch(() => {})
+          return cached
+        }
+        return fetch(e.request).then(r => {
+          if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()))
+          return r
+        }).catch(() => caches.match('./index.html'))
+      })
+    )
+  }
 })
 
 // ── Push: show notification when a background push arrives ──

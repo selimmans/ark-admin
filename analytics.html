@@ -454,6 +454,8 @@ function renderNet(monthStr, collectedInMonth){
 }
 
 /* ══════════ INIT ══════════ */
+window.onDataChange = function(){ render(); }
+
 window.onRoleReady = function(role) {
   if (role === 'staff') { window.location.replace('./index.html'); return; }
   populateYears(); populateMonths(); render();
