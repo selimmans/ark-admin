@@ -283,8 +283,7 @@
   <button class="week-today-btn" onclick="goToToday()">Today</button>
   <button class="week-nav-btn" onclick="navigateWeek(1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
   <div class="span-toggle">
-    <button class="span-btn active" id="btn-span-10"  onclick="setSpan(10)">10D</button>
-    <button class="span-btn"        id="btn-span-30"  onclick="setSpan(30)">Month</button>
+    <button class="span-btn active" id="btn-span-30"  onclick="setSpan(30)">Month</button>
     <button class="span-btn"        id="btn-span-120" onclick="setSpan(120)">4 Mo</button>
   </div>
   <div class="view-toggle">
@@ -502,7 +501,7 @@ function renderSnapshot() {
 const _t0=new Date(); _t0.setHours(0,0,0,0);
 let currentWeekStart=_t0;
 let currentCalView='grid';
-let currentSpan=10; // 10 | 30 | 120
+let currentSpan=30;
 
 function _showView(){
   const isMCal=currentSpan===30||currentSpan===120;
@@ -530,9 +529,8 @@ function setView(v){
 function setSpan(span){
   currentSpan=span;
   const d=new Date(currentWeekStart);
-  if(span===30||span===120) currentWeekStart=new Date(d.getFullYear(),d.getMonth(),1);
-  else { const t=new Date(); t.setHours(0,0,0,0); currentWeekStart=t; } // 10D always starts from today
-  [10,30,120].forEach(s=>{ const b=document.getElementById('btn-span-'+s); if(b) b.classList.toggle('active',s===span); });
+  currentWeekStart=new Date(d.getFullYear(),d.getMonth(),1);
+  [30,120].forEach(s=>{ const b=document.getElementById('btn-span-'+s); if(b) b.classList.toggle('active',s===span); });
   _showView();
   _renderCurrentView();
 }
@@ -574,13 +572,11 @@ function openBookingFromList(id){
 function navigateWeek(dir){
   if(currentSpan===30){ const d=new Date(currentWeekStart); currentWeekStart=new Date(d.getFullYear(),d.getMonth()+dir,1); }
   else if(currentSpan===120){ const d=new Date(currentWeekStart); currentWeekStart=new Date(d.getFullYear(),d.getMonth()+dir*4,1); }
-  else { currentWeekStart=addDays(currentWeekStart,dir*currentSpan); }
   _renderCurrentView();
 }
 function goToToday(){
   const t=new Date(); t.setHours(0,0,0,0);
-  if(currentSpan===10) currentWeekStart=t;
-  else currentWeekStart=new Date(t.getFullYear(),t.getMonth(),1);
+  currentWeekStart=new Date(t.getFullYear(),t.getMonth(),1);
   _renderCurrentView();
 }
 
