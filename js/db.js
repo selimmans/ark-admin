@@ -118,35 +118,43 @@ window.addEventListener('online', _replayQueue)
 // ─── DB object ────────────────────────────────────────────────────────────
 
 const _CACHE_KEY = 'ark_db_v1'
-const _CACHE_TTL = 300_000 // 5 min — realtime handles live changes; no need to refetch sooner
 
 window.DB = {
   _bookings: [], _expenses: [], _tasks: [], _extras: [], _units: [],
 
   async load() {
-    // Try localStorage cache — persists across sessions for full offline support
+    // 1. Try localStorage cache — always use it if present, regardless of age.
+    //    This makes every page navigation instant.
+    let hasCache = false
     try {
       const raw = localStorage.getItem(_CACHE_KEY)
       if (raw) {
-        const { ts, d } = JSON.parse(raw)
-        const age = Date.now() - ts
-        // Offline: use any cached data regardless of age
-        // Online + fresh: use cache as-is — realtime subscription handles live changes,
-        // so no background refetch needed (that was causing the flicker on every page nav)
-        if (!navigator.onLine || age < _CACHE_TTL) {
+        const { d } = JSON.parse(raw)
+        if (d && Array.isArray(d.bookings)) {
           this._bookings = d.bookings
-          this._expenses = d.expenses
-          this._tasks    = d.tasks
-          this._extras   = d.extras || []
-          this._units    = d.units
-          this.setupRealtime()
-          return
+          this._expenses = d.expenses || []
+          this._tasks    = d.tasks    || []
+          this._extras   = d.extras   || []
+          this._units    = d.units    || []
+          hasCache = true
         }
       }
     } catch (_) {}
-    // No cache or expired — wait for fresh fetch
-    await this._fetchAll()
+
+    if (!hasCache) {
+      // First-ever load (no cache) — must fetch synchronously before rendering
+      await this._fetchAll()
+      this.setupRealtime()
+      return
+    }
+
+    // 2. Render immediately from cache, then background-refresh once per load
     this.setupRealtime()
+    if (navigator.onLine) {
+      this._fetchAll()
+        .then(() => { if (typeof window.onDataChange === 'function') window.onDataChange() })
+        .catch(err => console.error('[ARK] Background fetch failed:', err))
+    }
   },
 
   async _fetchAll() {
@@ -157,11 +165,18 @@ window.DB = {
       window._db.from('extras').select('*').order('name'),
       window._db.from('units').select('*').order('sort_order'),
     ])
-    this._bookings = (b.data || []).map(rowToBooking)
-    this._expenses = (e.data || []).map(rowToExpense)
-    this._tasks    = (t.data || []).map(rowToTask)
-    this._extras   = (x.data || []).map(rowToExtra)
-    this._units    = (u.data || []).map(rowToUnit)
+    // Surface errors so we know when Supabase rejects a query
+    if (b.error) console.error('[ARK] bookings fetch error:', b.error.message)
+    if (e.error) console.error('[ARK] expenses fetch error:', e.error.message)
+    if (t.error) console.error('[ARK] tasks fetch error:', t.error.message)
+    if (x.error) console.error('[ARK] extras fetch error:', x.error.message)
+    if (u.error) console.error('[ARK] units fetch error:', u.error.message)
+    // Only overwrite in-memory arrays if the query succeeded (has data)
+    if (b.data) this._bookings = b.data.map(rowToBooking)
+    if (e.data) this._expenses = e.data.map(rowToExpense)
+    if (t.data) this._tasks    = t.data.map(rowToTask)
+    if (x.data) this._extras   = x.data.map(rowToExtra)
+    if (u.data) this._units    = u.data.map(rowToUnit)
     this._saveCache()
   },
 

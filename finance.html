@@ -583,14 +583,26 @@ function render() {
   const currentMonth = toYM(now);
   const ym           = getSelectedMonth();  // for expenses table + net summary
 
-  // ── Collected This Year ──
-  const yearBookings  = collectedInPeriod(currentYear);
+  const allBookings = DB.getBookings();
+
+  // ── Collected This Year — any paid/deposit booking whose checkOut or checkIn is this year ──
+  const yearBookings = allBookings.filter(b => {
+    if (b.status === 'cancelled') return false;
+    if (b.paymentStatus !== 'paid' && b.paymentStatus !== 'deposit') return false;
+    const d = b.checkOut || b.checkIn || '';
+    return d.startsWith(currentYear);
+  });
   const collectedYear = yearBookings.reduce((s, b) => s + collectedAmount(b), 0);
   document.getElementById('c-collectedYear').textContent    = fmtCurrency(collectedYear);
-  document.getElementById('c-collectedYearSub').textContent = yearBookings.length + ' booking' + (yearBookings.length !== 1 ? 's' : '') + ' collected';
+  document.getElementById('c-collectedYearSub').textContent = yearBookings.length + ' booking' + (yearBookings.length !== 1 ? 's' : '') + ' · ' + allBookings.length + ' total loaded';
 
-  // ── Collected This Month ──
-  const monthBookings  = collectedInPeriod(currentMonth);
+  // ── Collected This Month — any paid/deposit booking whose checkOut or checkIn is this month ──
+  const monthBookings = allBookings.filter(b => {
+    if (b.status === 'cancelled') return false;
+    if (b.paymentStatus !== 'paid' && b.paymentStatus !== 'deposit') return false;
+    const d = b.checkOut || b.checkIn || '';
+    return d.startsWith(currentMonth);
+  });
   const collectedMonth = monthBookings.reduce((s, b) => s + collectedAmount(b), 0);
   document.getElementById('c-collectedMonth').textContent    = fmtCurrency(collectedMonth);
   document.getElementById('c-collectedMonthSub').textContent = monthBookings.length + ' booking' + (monthBookings.length !== 1 ? 's' : '') + ' collected';
