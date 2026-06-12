@@ -1,3 +1,7 @@
+// Parse a date string (e.g. "2026-06-15" or "2026-06-15T14:00:00") as local
+// noon so it's never affected by timezone — available globally on every page.
+function parseDate(s) { return s ? new Date(s.slice(0,10)+'T12:00:00') : null; }
+
 // ─── Field mappers ────────────────────────────────────────────────────────
 
 function _generatePortalToken() {

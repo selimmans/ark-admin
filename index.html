@@ -449,7 +449,7 @@ function addDays(d,n)    { const dt=new Date(d); dt.setDate(dt.getDate()+n); ret
 function toDateStr(d)    { return d.toISOString().split('T')[0]; }
 function fmtDate(d)      { return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
 function fmtCurrency(n)  { return 'EGP '+Math.round(n||0).toLocaleString('en-EG'); }
-function calcNights(i,o) { return Math.round((new Date(o)-new Date(i))/86400000); }
+function calcNights(i,o) { return Math.round((parseDate(o)-parseDate(i))/86400000); }
 
 function calcPricing(units,checkIn,checkOut,extras,discount) {
   const nights=calcNights(checkIn,checkOut); let base=0,clean=0;
@@ -461,12 +461,12 @@ function calcPricing(units,checkIn,checkOut,extras,discount) {
 }
 
 function hasConflict(nb,all) {
-  const ni=new Date(nb.checkIn),no=new Date(nb.checkOut);
-  return all.filter(b=>b.id!==nb.id&&b.status!=='cancelled').filter(b=>(b.accommodations||[]).some(a=>(nb.accommodations||[]).includes(a))).some(b=>ni<new Date(b.checkOut)&&no>new Date(b.checkIn));
+  const ni=parseDate(nb.checkIn),no=parseDate(nb.checkOut);
+  return all.filter(b=>b.id!==nb.id&&b.status!=='cancelled').filter(b=>(b.accommodations||[]).some(a=>(nb.accommodations||[]).includes(a))).some(b=>ni<parseDate(b.checkOut)&&no>parseDate(b.checkIn));
 }
 
 function getSpan(booking,startDate,numDays) {
-  const ci=new Date(booking.checkIn),co=new Date(booking.checkOut),endDate=addDays(startDate,numDays);
+  const ci=parseDate(booking.checkIn),co=parseDate(booking.checkOut),endDate=addDays(startDate,numDays);
   if(co<=startDate||ci>=endDate) return null;
   const vs=ci<startDate?startDate:ci, ve=co>endDate?endDate:co;
   const t=numDays*86400000;
@@ -543,12 +543,12 @@ function renderListView(){
   if(!bookings.length){wrap.innerHTML='<div class="bcard-empty">No bookings yet</div>';return;}
   let html='',lastLabel='';
   bookings.forEach(b=>{
-    const ci=new Date(b.checkIn);
+    const ci=parseDate(b.checkIn);
     const label=MONTH_NAMES[ci.getMonth()]+' '+ci.getFullYear();
     if(label!==lastLabel){html+=`<div class="bcard-date-group">${label}</div>`;lastLabel=label;}
     const unitNames=(b.accommodations||[]).map(id=>(units.find(u=>u.id===id)||{name:id}).name).join(', ')||'—';
     const barColor=(()=>{const u=units.find(x=>x.id===(b.accommodations||[])[0]);return u?.color||'#B09070';})();
-    const ciStr=fmtDate(ci), coStr=fmtDate(new Date(b.checkOut));
+    const ciStr=fmtDate(ci), coStr=fmtDate(parseDate(b.checkOut));
     html+=`<div class="bcard" onclick="openBookingFromList('${b.id}')">
       <div class="bcard-bar" style="background:${barColor}"></div>
       <div class="bcard-body">
@@ -750,10 +750,10 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
       const top=TOP_PAD+ui*(BAR_H+BAR_GAP);
       const unitBookings=bookings.filter(b=>
         (b.accommodations||[]).includes(unit.id)&&b.status!=='cancelled'&&
-        new Date(b.checkIn)<wkEnd&&new Date(b.checkOut)>=wkStart
+        parseDate(b.checkIn)<wkEnd&&parseDate(b.checkOut)>=wkStart
       );
       unitBookings.forEach(booking=>{
-        const ci=new Date(booking.checkIn), co=new Date(booking.checkOut);
+        const ci=parseDate(booking.checkIn), co=parseDate(booking.checkOut);
         const coDisplay=addDays(co,1); // checkout day is inclusive on the calendar
 
         // Clamp bar to the visible (in-month) portion of this week
@@ -1018,8 +1018,8 @@ function sharePortalLink() {
   if (!b?.accessToken) return
   const base = 'https://selimmans.github.io/ark-admin/guest.html'
   const url  = `${base}?code=${b.accessToken}`
-  const ci   = b.checkIn  ? new Date(b.checkIn).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
-  const co   = b.checkOut ? new Date(b.checkOut).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
+  const ci   = b.checkIn  ? parseDate(b.checkIn).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
+  const co   = b.checkOut ? parseDate(b.checkOut).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : ''
   const msg  = `Your stay at ARK is confirmed! 🌿\n\nHere's your private guest portal — arrival info, local guide & requests, all in one place:\n\n${url}\n\n${ci} → ${co}\n\nSee you soon.`
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
 }
@@ -1034,14 +1034,14 @@ function openDayModal(date){
   const bookings=DB.getBookings(), dayEnd=new Date(date); dayEnd.setHours(23,59,59,999);
   document.getElementById('dayModalTitle').textContent=fmtDate(date);
   const tl=document.getElementById('dayTimeline'); tl.innerHTML='';
-  const dayBookings=bookings.filter(b=>new Date(b.checkIn)<=dayEnd&&new Date(b.checkOut)>=date);
+  const dayBookings=bookings.filter(b=>parseDate(b.checkIn)<=dayEnd&&parseDate(b.checkOut)>=date);
   for(let h=0;h<24;h++){
     const row=document.createElement('div'); row.className='day-hour-row';
     const lbl=document.createElement('div'); lbl.className='day-hour-label'; lbl.textContent=h.toString().padStart(2,'0')+':00';
     row.appendChild(lbl);
     const evts=document.createElement('div'); evts.className='day-hour-events';
     dayBookings.forEach(b=>{
-      const bi=new Date(b.checkIn),bo=new Date(b.checkOut);
+      const bi=parseDate(b.checkIn),bo=parseDate(b.checkOut);
       const showIn=bi.toDateString()===date.toDateString()&&bi.getHours()===h;
       const showOut=bo.toDateString()===date.toDateString()&&bo.getHours()===h;
       if(!showIn&&!showOut) return;

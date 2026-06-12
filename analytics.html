@@ -225,7 +225,7 @@ function daysInMonth(yearStr, monthStr){
 // Clamp booking nights to within month
 function nightsInMonth(checkIn, checkOut, monthStr){
   if(!checkIn||!checkOut) return 0;
-  const ci=new Date(checkIn), co=new Date(checkOut);
+  const ci=parseDate(checkIn), co=parseDate(checkOut);
   const [y,m]=monthStr.split('-');
   const mStart=new Date(parseInt(y),parseInt(m)-1,1);
   const mEnd=new Date(parseInt(y),parseInt(m),1); // exclusive
@@ -295,7 +295,7 @@ function render(){
   // Date-overlap: used for occupancy (when did guests actually stay?)
   const monthBookings=bookings.filter(b=>{
     if(!b.checkIn||!b.checkOut) return false;
-    return new Date(b.checkIn)<mEnd && new Date(b.checkOut)>mStart;
+    return parseDate(b.checkIn)<mEnd && parseDate(b.checkOut)>mStart;
   });
 
   // Cash-basis: money received in this month
@@ -321,7 +321,7 @@ function renderMetrics(monthStr, collectedInMonth, monthBookings){
   const lengthBookings = monthBookings.filter(b=>b.checkIn&&b.checkOut);
   const avgNights = lengthBookings.length
     ? lengthBookings.reduce((s,b)=>{
-        const nights=(new Date(b.checkOut)-new Date(b.checkIn))/(1000*60*60*24);
+        const nights=(parseDate(b.checkOut)-parseDate(b.checkIn))/(1000*60*60*24);
         return s+nights;
       },0)/lengthBookings.length
     : 0;

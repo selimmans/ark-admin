@@ -563,7 +563,7 @@ function outstandingInDays(days) {
   const limit = new Date(today); limit.setDate(limit.getDate() + days);
   return DB.getBookings().filter(b => {
     if (b.status === 'cancelled' || b.paymentStatus === 'paid') return false;
-    const ci = new Date(b.checkIn);
+    const ci = parseDate(b.checkIn);
     return ci >= today && ci <= limit;
   });
 }
