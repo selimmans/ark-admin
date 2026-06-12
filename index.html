@@ -750,14 +750,15 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
       const top=TOP_PAD+ui*(BAR_H+BAR_GAP);
       const unitBookings=bookings.filter(b=>
         (b.accommodations||[]).includes(unit.id)&&b.status!=='cancelled'&&
-        new Date(b.checkIn)<wkEnd&&new Date(b.checkOut)>wkStart
+        new Date(b.checkIn)<wkEnd&&new Date(b.checkOut)>=wkStart
       );
       unitBookings.forEach(booking=>{
         const ci=new Date(booking.checkIn), co=new Date(booking.checkOut);
+        const coDisplay=addDays(co,1); // checkout day is inclusive on the calendar
 
         // Clamp bar to the visible (in-month) portion of this week
         const barStart=Math.max(ci.getTime(),wkStart.getTime(),monthStart.getTime());
-        const barEnd  =Math.min(co.getTime(),wkEnd.getTime(),  monthEnd.getTime());
+        const barEnd  =Math.min(coDisplay.getTime(),wkEnd.getTime(),monthEnd.getTime());
         if(barEnd<=barStart) return;
 
         const startIdx=Math.round((barStart-wkStart)/86400000);
@@ -766,7 +767,7 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
 
         // naturalStart/End: bar wasn't pushed by a month boundary
         const naturalStart=ci.getTime()===barStart;
-        const naturalEnd  =co.getTime()===barEnd;
+        const naturalEnd  =coDisplay.getTime()===barEnd;
 
         // Show guest name on first visible occurrence of this booking in this month
         const firstInMonth=Math.max(ci.getTime(),monthStart.getTime());
