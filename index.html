@@ -499,7 +499,7 @@ function renderSnapshot() {
 
 /* ══════════ CALENDAR ══════════ */
 const _t0=new Date(); _t0.setHours(0,0,0,0);
-let currentWeekStart=_t0;
+let currentWeekStart=new Date(_t0.getFullYear(),_t0.getMonth(),1);
 let currentCalView='grid';
 let currentSpan=30;
 
@@ -762,7 +762,8 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
         if(barEnd<=barStart) return;
 
         const startIdx=Math.round((barStart-wkStart)/86400000);
-        const endIdx  =Math.round((barEnd  -wkStart)/86400000);
+        const endIdxFull=Math.round((barEnd-wkStart)/86400000);
+        const endIdx=naturalEnd ? endIdxFull-0.5 : endIdxFull;
         if(endIdx<=startIdx) return;
 
         // naturalStart/End: bar wasn't pushed by a month boundary
@@ -1133,7 +1134,7 @@ document.addEventListener('keydown',e=>{
 });
 
 window.onRoleReady = function(role) {
-  renderSnapshot(); renderCalendar();
+  renderSnapshot(); _showView(); _renderCurrentView();
   window.onDataChange = function() { renderSnapshot(); _renderCurrentView(); };
   if (role !== 'staff') return
   // Staff: block booking modal entirely — no details, no pricing visible
