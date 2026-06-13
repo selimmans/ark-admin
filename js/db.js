@@ -1,6 +1,10 @@
 // Parse a date string (e.g. "2026-06-15" or "2026-06-15T14:00:00") as local
 // noon so it's never affected by timezone — available globally on every page.
-function parseDate(s) { return s ? new Date(s.slice(0,10)+'T12:00:00') : null; }
+function parseDate(s) {
+  if (!s) return null;
+  const p = s.slice(0,10).split('-');
+  return new Date(+p[0], +p[1]-1, +p[2]); // local midnight — never UTC
+}
 
 // ─── Field mappers ────────────────────────────────────────────────────────
 

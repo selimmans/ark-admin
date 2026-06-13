@@ -444,7 +444,7 @@
 <datalist id="extrasSuggestions"></datalist>
 
 <script>
-function parseDate(s){return s?new Date(s.slice(0,10)+'T12:00:00'):null;}
+function parseDate(s){if(!s)return null;const p=s.slice(0,10).split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
 /* ══════════ DB comes from js/db.js ══════════ */
 function getActiveUnits() { return DB.getUnits().filter(u=>u.active); }
 function getUnitById(id)  { return DB.getUnits().find(u=>u.id===id) || {name:id,color:'#999',active:false}; }
