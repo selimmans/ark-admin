@@ -14,6 +14,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script>
+    window.onerror = function(msg,src,line,col,err){
+      document.documentElement.style.opacity='1';
+      document.body.innerHTML='<pre style="padding:30px;font-size:13px;color:#8A4A4A;white-space:pre-wrap">ERROR: '+msg+'\n'+src+':'+line+'\n'+(err&&err.stack||'')+'</pre>';
+    };
+    window.addEventListener('unhandledrejection',function(e){
+      document.documentElement.style.opacity='1';
+      document.body.innerHTML='<pre style="padding:30px;font-size:13px;color:#8A4A4A;white-space:pre-wrap">PROMISE ERROR:\n'+(e.reason&&(e.reason.stack||e.reason.message||e.reason))+'</pre>';
+    });
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./js/supabase.js"></script>
   <script src="./js/db.js"></script>
