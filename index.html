@@ -772,14 +772,14 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
         const barEnd  =Math.min(coDisplay.getTime(),wkEnd.getTime(),monthEnd.getTime());
         if(barEnd<=barStart) return;
 
+        // naturalStart/End: bar wasn't pushed by a month boundary
+        const naturalStart=ci.getTime()===barStart;
+        const naturalEnd  =coDisplay.getTime()===barEnd;
+
         const startIdx=Math.round((barStart-wkStart)/86400000);
         const endIdxFull=Math.round((barEnd-wkStart)/86400000);
         const endIdx=naturalEnd ? endIdxFull-0.5 : endIdxFull;
         if(endIdx<=startIdx) return;
-
-        // naturalStart/End: bar wasn't pushed by a month boundary
-        const naturalStart=ci.getTime()===barStart;
-        const naturalEnd  =coDisplay.getTime()===barEnd;
 
         // Show guest name on first visible occurrence of this booking in this month
         const firstInMonth=Math.max(ci.getTime(),monthStart.getTime());
