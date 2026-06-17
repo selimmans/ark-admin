@@ -544,7 +544,7 @@ function outstandingAmount(b) {
 // paid    → paidAt if set, otherwise checkOut (booking is done, money is collected)
 // deposit → checkIn (deposit taken at/before arrival)
 function collectionDate(b) {
-  if (b.paymentStatus === 'paid')    return b.paidAt || b.checkOut || b.checkIn || null;
+  if (b.paymentStatus === 'paid')    return b.checkOut || b.checkIn || null;
   if (b.paymentStatus === 'deposit') return b.checkIn || null;
   return null;
 }
@@ -586,24 +586,14 @@ function render() {
 
   const allBookings = DB.getBookings();
 
-  // ── Collected This Year — any paid/deposit booking whose checkOut or checkIn is this year ──
-  const yearBookings = allBookings.filter(b => {
-    if (b.status === 'cancelled') return false;
-    if (b.paymentStatus !== 'paid' && b.paymentStatus !== 'deposit') return false;
-    const d = b.checkOut || b.checkIn || '';
-    return d.startsWith(currentYear);
-  });
+  // ── Collected This Year ──
+  const yearBookings = collectedInPeriod(currentYear);
   const collectedYear = yearBookings.reduce((s, b) => s + collectedAmount(b), 0);
   document.getElementById('c-collectedYear').textContent    = fmtCurrency(collectedYear);
   document.getElementById('c-collectedYearSub').textContent = yearBookings.length + ' booking' + (yearBookings.length !== 1 ? 's' : '') + ' · ' + allBookings.length + ' total loaded';
 
-  // ── Collected This Month — any paid/deposit booking whose checkOut or checkIn is this month ──
-  const monthBookings = allBookings.filter(b => {
-    if (b.status === 'cancelled') return false;
-    if (b.paymentStatus !== 'paid' && b.paymentStatus !== 'deposit') return false;
-    const d = b.checkOut || b.checkIn || '';
-    return d.startsWith(currentMonth);
-  });
+  // ── Collected This Month ──
+  const monthBookings = collectedInPeriod(currentMonth);
   const collectedMonth = monthBookings.reduce((s, b) => s + collectedAmount(b), 0);
   document.getElementById('c-collectedMonth').textContent    = fmtCurrency(collectedMonth);
   document.getElementById('c-collectedMonthSub').textContent = monthBookings.length + ' booking' + (monthBookings.length !== 1 ? 's' : '') + ' collected';

@@ -280,7 +280,7 @@ function collectedAmount(b){
   return 0;
 }
 function collectionDate(b){
-  if(b.paymentStatus==='paid')    return b.paidAt||b.checkOut||b.checkIn||null;
+  if(b.paymentStatus==='paid')    return b.checkOut||b.checkIn||null;
   if(b.paymentStatus==='deposit') return b.checkIn||null;
   return null;
 }
