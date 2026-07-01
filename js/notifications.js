@@ -97,29 +97,43 @@ function _notifyToday() {
   if (sessionStorage.getItem(todayKey)) return
   sessionStorage.setItem(todayKey, '1')
 
-  const today    = new Date().toISOString().split('T')[0]
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  const d0 = new Date(); d0.setHours(0,0,0,0)
+  const d1 = new Date(d0); d1.setDate(d1.getDate()+1)
+  const d2 = new Date(d0); d2.setDate(d2.getDate()+2)
+  const today    = d0.toISOString().split('T')[0]
+  const tomorrow = d1.toISOString().split('T')[0]
+  const in2days  = d2.toISOString().split('T')[0]
+
   const bookings = (window.DB?.getBookings() || []).filter(b => b.status !== 'cancelled')
 
-  const arrivals    = bookings.filter(b => (b.checkIn  || '').startsWith(today)).length
-  const departures  = bookings.filter(b => (b.checkOut || '').startsWith(today)).length
-  const unpaidSoon  = bookings.filter(b =>
-    b.status === 'confirmed' && b.paymentStatus === 'unpaid' &&
-    b.checkIn >= today && b.checkIn <= tomorrow
-  ).length
+  function label(dateStr) {
+    if (dateStr === today)    return 'today'
+    if (dateStr === tomorrow) return 'tomorrow'
+    return 'in 2 days'
+  }
 
+  // Gather arrivals and departures within the next 2 days, grouped by when
   const parts = []
-  if (arrivals)   parts.push(`${arrivals} arrival${arrivals   > 1 ? 's' : ''}`)
-  if (departures) parts.push(`${departures} departure${departures > 1 ? 's' : ''}`)
+  ;[today, tomorrow, in2days].forEach(ds => {
+    const arr = bookings.filter(b => (b.checkIn  || '').startsWith(ds)).length
+    const dep = bookings.filter(b => (b.checkOut || '').startsWith(ds)).length
+    if (arr) parts.push(`${arr} arrival${arr > 1 ? 's' : ''} ${label(ds)}`)
+    if (dep) parts.push(`${dep} departure${dep > 1 ? 's' : ''} ${label(ds)}`)
+  })
+
+  const unpaidSoon = bookings.filter(b =>
+    b.status === 'confirmed' && b.paymentStatus === 'unpaid' &&
+    b.checkIn >= today && b.checkIn <= in2days
+  ).length
   if (unpaidSoon) parts.push(`${unpaidSoon} unpaid booking${unpaidSoon > 1 ? 's' : ''} due soon`)
 
   if (!parts.length) return
 
-  new Notification('ARK OS · Today', {
+  new Notification('ARK OS · Upcoming', {
     body:  parts.join(' · '),
     icon:  './icons/icon-192.png',
     badge: './icons/icon-192.png',
-    tag:   'ark-daily',          // replaces previous instead of stacking
+    tag:   'ark-daily',
     renotify: false,
   })
 }

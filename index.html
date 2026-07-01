@@ -178,6 +178,7 @@
     .conflict-warning{background:rgba(138,74,74,0.08);border:0.5px solid rgba(138,74,74,0.4);padding:11px 14px;margin-bottom:14px;display:none;}
     .conflict-warning.visible{display:block;}
     .conflict-warning-text{font-family:var(--sans);font-size:11px;font-weight:300;color:var(--negative);margin-bottom:9px;}
+    .changeout-banner{background:rgba(74,122,138,0.08);border:0.5px solid rgba(74,122,138,0.4);padding:11px 14px;margin-bottom:14px;font-family:var(--sans);font-size:11px;font-weight:300;color:var(--ink);display:none;}
     .conflict-override{display:flex;align-items:center;gap:7px;cursor:pointer;}
     .conflict-override label{font-family:var(--sans);font-size:11px;font-weight:300;color:var(--negative);cursor:pointer;}
 
@@ -325,6 +326,7 @@
         <div class="conflict-warning-text">⚠ Conflict detected with an existing reservation.</div>
         <label class="conflict-override"><input type="checkbox" id="overrideConflict" /><span>Override and save anyway</span></label>
       </div>
+      <div class="changeout-banner" id="changeoutBanner"></div>
       <div class="form-grid">
         <div class="form-section-label">Guest</div>
         <div class="form-group"><label class="form-label">Guest Name</label><input class="form-input" type="text" id="f-guestName" placeholder="Full name" /></div>
@@ -705,6 +707,8 @@ function renderMonthCalView() {
 
 function buildMonthCalendar(monthDate,bookings,units,today) {
   const year=monthDate.getFullYear(), month=monthDate.getMonth();
+  // Local-time date string — avoids UTC shift from toISOString() in non-UTC timezones
+  function _ds(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   const FULL_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const BAR_H=12, BAR_GAP=2, TOP_PAD=22;
   const rowHeight=TOP_PAD+units.length*(BAR_H+BAR_GAP)+6;
@@ -749,8 +753,19 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
       } else {
         const isToday=day.getTime()===today.getTime();
         cell.className='mcal-day'+(isToday?' today':'');
+        const ds=_ds(day);
+        // Highlight changeout days (a unit has both a checkout and checkin on this day)
+        const isChangeoutDay=bookings.filter(b=>b.status!=='cancelled').some(b=>
+          (b.checkOut||'').startsWith(ds)&&
+          (b.accommodations||[]).some(uid=>
+            bookings.some(b2=>b2.id!==b.id&&b2.status!=='cancelled'&&
+              (b2.checkIn||'').startsWith(ds)&&
+              (b2.accommodations||[]).includes(uid)
+            )
+          )
+        );
         cell.innerHTML=`<span class="mcal-daynum">${day.getDate()}</span>`;
-        const ds=toDateStr(day);
+        if(isChangeoutDay) cell.style.background='rgba(138,74,74,0.07)';
         cell.onclick=()=>openBookingModal(null,null,ds);
       }
       row.appendChild(cell);
@@ -776,19 +791,29 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
         const naturalStart=ci.getTime()===barStart;
         const naturalEnd  =coDisplay.getTime()===barEnd;
 
-        const startIdx=Math.round((barStart-wkStart)/86400000);
+        // Only shift check-in to midday when another booking is checking OUT that same day
+        // (actual changeout). Non-changeout check-ins start at the full beginning of the day.
+        const ciDateStr=(booking.checkIn||'').split('T')[0];
+        const coDateStr=(booking.checkOut||'').split('T')[0];
+        const isChangeoutArrival=naturalStart&&unitBookings.some(b=>b.id!==booking.id&&(b.checkOut||'').startsWith(ciDateStr));
+        const isChangeoutDeparture=naturalEnd&&unitBookings.some(b=>b.id!==booking.id&&(b.checkIn||'').startsWith(coDateStr));
+
+        const startIdxFull=Math.round((barStart-wkStart)/86400000);
         const endIdxFull=Math.round((barEnd-wkStart)/86400000);
-        const endIdx=naturalEnd ? endIdxFull-0.5 : endIdxFull;
+        const startIdx=isChangeoutArrival ? startIdxFull+0.5 : startIdxFull;
+        const endIdx=isChangeoutDeparture ? endIdxFull-0.5 : endIdxFull;
         if(endIdx<=startIdx) return;
 
         // Show guest name on first visible occurrence of this booking in this month
         const firstInMonth=Math.max(ci.getTime(),monthStart.getTime());
         const isFirstOccurrence=firstInMonth>=wkStart.getTime()&&firstInMonth<wkEnd.getTime();
 
+        const lPx=naturalStart?(isChangeoutArrival?4:2):0;
+        const rPx=naturalEnd?(isChangeoutDeparture?4:2):0;
         const lR=naturalStart?'3px':'0', rR=naturalEnd?'3px':'0';
         const bar=document.createElement('div'); bar.className='mcal-event-bar';
-        bar.style.cssText=`left:calc(${startIdx/7*100}% + ${naturalStart?2:0}px);`
-          +`width:calc(${(endIdx-startIdx)/7*100}% - ${(naturalStart?2:0)+(naturalEnd?2:0)}px);`
+        bar.style.cssText=`left:calc(${startIdx/7*100}% + ${lPx}px);`
+          +`width:calc(${(endIdx-startIdx)/7*100}% - ${lPx+rPx}px);`
           +`top:${top}px;height:${BAR_H}px;background:${unit.color};`
           +`border-radius:${lR} ${rR} ${rR} ${lR};`;
         if(isFirstOccurrence){
@@ -797,6 +822,19 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
         bar.onclick=e=>{ e.stopPropagation(); openBookingModal(booking); };
         row.appendChild(bar);
       });
+
+      // Draw a visible divider line at the midpoint of any changeout day for this unit row
+      for(let di=0;di<7;di++){
+        const ds=_ds(addDays(wkStart,di));
+        const hasOut=unitBookings.some(b=>(b.checkOut||'').startsWith(ds));
+        const hasIn =unitBookings.some(b=>(b.checkIn||'').startsWith(ds));
+        if(hasOut&&hasIn){
+          const divider=document.createElement('div');
+          divider.style.cssText=`position:absolute;left:calc(${(di+0.5)/7*100}% - 1px);`
+            +`top:${top}px;width:2px;height:${BAR_H}px;background:var(--bg);pointer-events:none;z-index:2;`;
+          row.appendChild(divider);
+        }
+      }
     });
 
     cal.appendChild(row);
@@ -826,6 +864,25 @@ function openBookingModal(booking=null,preUnit=null,preDate=null){
   } else { document.getElementById('invoicedTag').style.display='none'; }
   document.getElementById('conflictWarning').classList.remove('visible');
   document.getElementById('overrideConflict').checked=false;
+
+  // Changeout banner — show if another booking shares this booking's check-in or check-out date on the same unit
+  const changeoutBanner=document.getElementById('changeoutBanner');
+  if(booking&&booking.checkIn&&booking.checkOut){
+    const others=DB.getBookings().filter(b=>b.id!==booking.id&&b.status!=='cancelled');
+    const units=booking.accommodations||[];
+    const ciDate=(booking.checkIn||'').split('T')[0];
+    const coDate=(booking.checkOut||'').split('T')[0];
+    const sameUnit=b=>(b.accommodations||[]).some(u=>units.includes(u));
+    const leavingOnArrival=others.filter(b=>sameUnit(b)&&(b.checkOut||'').startsWith(ciDate));
+    const arrivingOnDeparture=others.filter(b=>sameUnit(b)&&(b.checkIn||'').startsWith(coDate));
+    const msgs=[];
+    if(leavingOnArrival.length) msgs.push('↑ '+leavingOnArrival.map(b=>b.guestName||'Guest').join(', ')+' checks out on check-in day');
+    if(arrivingOnDeparture.length) msgs.push('↓ '+arrivingOnDeparture.map(b=>b.guestName||'Guest').join(', ')+' checks in on check-out day');
+    changeoutBanner.textContent=msgs.join('  ·  ');
+    changeoutBanner.style.display=msgs.length?'block':'none';
+  } else {
+    changeoutBanner.style.display='none';
+  }
 
   if(booking){
     document.getElementById('f-guestName').value=booking.guestName||'';
