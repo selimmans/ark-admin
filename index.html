@@ -765,7 +765,7 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
           )
         );
         cell.innerHTML=`<span class="mcal-daynum">${day.getDate()}</span>`;
-        if(isChangeoutDay) cell.style.background='rgba(180,60,60,0.13)';
+        if(isChangeoutDay) cell.style.background='rgba(180,50,50,0.22)';
         cell.onclick=()=>openBookingModal(null,null,ds);
       }
       row.appendChild(cell);
@@ -808,8 +808,8 @@ function buildMonthCalendar(monthDate,bookings,units,today) {
         const firstInMonth=Math.max(ci.getTime(),monthStart.getTime());
         const isFirstOccurrence=firstInMonth>=wkStart.getTime()&&firstInMonth<wkEnd.getTime();
 
-        const lPx=naturalStart?(isChangeoutArrival?6:4):0;
-        const rPx=naturalEnd?(isChangeoutDeparture?6:4):0;
+        const lPx=naturalStart?(isChangeoutArrival?10:7):0;
+        const rPx=naturalEnd?(isChangeoutDeparture?10:7):0;
         const lR=naturalStart?'3px':'0', rR=naturalEnd?'3px':'0';
         const bar=document.createElement('div'); bar.className='mcal-event-bar';
         bar.style.cssText=`left:calc(${startIdx/7*100}% + ${lPx}px);`
